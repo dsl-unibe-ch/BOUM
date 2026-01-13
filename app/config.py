@@ -16,4 +16,4 @@ class Config:
 
     # video uploads
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or '/tmp/uploads'
-    ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov'}
+    ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv'}

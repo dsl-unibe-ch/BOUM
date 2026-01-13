@@ -43,7 +43,7 @@ def require_authentication(f):
         except jwt.InvalidTokenError:
             return jsonify({"msg": "Invalid token"}), 401
 
-        return f(data["sub"], data["role"], *args, **kwargs)
+        return f(int(data["sub"]), data["role"], *args, **kwargs)
     return decorated
 
 
