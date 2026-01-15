@@ -12,7 +12,7 @@ class Config:
     ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD') or 'adminpass'
 
     # database
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or "sqlite+pysqlite:///app.db"
 
     # video uploads
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or '/tmp/uploads'
