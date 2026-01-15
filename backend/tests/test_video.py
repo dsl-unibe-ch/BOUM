@@ -1,7 +1,7 @@
 import io
 
 def test_upload_video_unauth(client):
-    response = client.post("/video/", data={})
+    response = client.post("/api/video/", data={})
     
     assert response.status_code == 401
     assert response.json["msg"] == "Missing token"
@@ -9,7 +9,7 @@ def test_upload_video_unauth(client):
 
 def test_upload_txt_non_admin(client, user_token):
     response = client.post(
-        "/video/",
+        "/api/video/",
         data = {
             'file': (io.BytesIO(b"this is some test content"), 'test_file.txt'),
         }, 
@@ -24,7 +24,7 @@ def test_upload_txt_non_admin(client, user_token):
 
 def test_upload_mkv_non_admin(client, user_token):
     response = client.post(
-        "/video/",
+        "/api/video/",
         data = {
             'file': (io.BytesIO(b"this is some test content"), 'test_vid.mkv'),
         }, 
@@ -37,7 +37,7 @@ def test_upload_mkv_non_admin(client, user_token):
     assert response.json["msg"] == "Video uploaded"
 
     response = client.get(
-        "/video/me",
+        "/api/video/me",
         headers={
             "Authorization": f"Bearer {user_token}"
         }
@@ -49,7 +49,7 @@ def test_upload_mkv_non_admin(client, user_token):
     assert response.json[0]["id"] == 1
 
     response = client.get(
-        f"/video/{response.json[0]['id']}",
+        f"/api/video/{response.json[0]['id']}",
         headers={
             "Authorization": f"Bearer {user_token}"
         }

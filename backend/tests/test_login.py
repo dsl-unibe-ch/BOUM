@@ -2,7 +2,7 @@ from jwt import decode
 from app.constants import UserRole
 
 def test_login_invalid_password(client):
-    response = client.post("/auth/login", json={
+    response = client.post("/api/auth/login", json={
         "username": "admin",
         "password": "wrong_password"
     })
@@ -10,8 +10,9 @@ def test_login_invalid_password(client):
     assert response.status_code == 401
     assert response.json["msg"] == "Invalid username or password"
 
+
 def test_login_success(app, client):
-    response = client.post("/auth/login", json={
+    response = client.post("/api/auth/login", json={
         "username": "admin",
         "password": app.config['ADMIN_PASSWORD']
     })

@@ -18,7 +18,5 @@ def login():
 
     if user is None or not user.verify_password(login_dto.password):
         return jsonify({"msg": "Invalid username or password"}), 401
-    
+
     return jsonify({"bearer": create_jwt(user.id, user.role)}), 200
-
-

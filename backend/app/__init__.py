@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 
 from app.routes.auth import auth_bp
 from app.routes.users import user_bp
@@ -9,6 +10,7 @@ from app.config import Config
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     app.config.from_object(Config)
     
@@ -17,9 +19,9 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    app.register_blueprint(auth_bp, url_prefix='/auth')
-    app.register_blueprint(user_bp, url_prefix='/user')
-    app.register_blueprint(video_bp, url_prefix='/video')
+    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(user_bp, url_prefix='/api/user')
+    app.register_blueprint(video_bp, url_prefix='/api/video')
 
     with app.app_context():
         from app.models import User, UserRole

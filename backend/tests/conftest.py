@@ -5,8 +5,6 @@ from sqlalchemy import StaticPool
 from app.constants import UserRole
 from app.config import Config
 
-from jwt import decode
-
 @pytest.fixture
 def admin_password():
     return Config.ADMIN_PASSWORD
@@ -40,7 +38,7 @@ def admin_token(client, app):
         return create_jwt(user_id=1, role=UserRole.ADMIN)
 
 @pytest.fixture
-def user_token(client, app):
+def user_token(_client, app):
     from app.utils import create_jwt
     with app.app_context():
         return create_jwt(user_id=1, role=UserRole.USER)
