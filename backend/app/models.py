@@ -2,7 +2,7 @@ from sqlalchemy import ForeignKey, Integer, String, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bcrypt import hashpw, gensalt, checkpw
 from app.extensions import Base
-from app.constants import UserRole
+from app.constants import UserRole, VideoStatus
 
 
 class User(Base):
@@ -44,6 +44,8 @@ class Video(Base):
 
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     owner: Mapped["User"] = relationship(back_populates="videos")
+
+    status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
 
     def __init__(self, filename: str, path: str, owner: User):
         super().__init__(filename=filename, path=path, owner=owner)
