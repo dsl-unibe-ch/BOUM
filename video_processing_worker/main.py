@@ -17,7 +17,8 @@ class VideoStatus(IntEnum):
     PROCESSED = 4
     FAILED = 5
 
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite+pysqlite:///app.db')
+DATABASE_URL    = os.getenv('DATABASE_URL', 'sqlite+pysqlite:///app.db')
+VIDEO_INPUT_DIR = os.getenv('VIDEO_INPUT_DIR', '/tmp/videos')
 
 # global exit event for graceful shutdown of worker processes
 exit_event = multiprocessing.Event()
@@ -48,7 +49,6 @@ class Video(Base):
     path: Mapped[str] = mapped_column(String(200), nullable=False)
 
     status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
-
 
 def validate_video_mock(file_path):
     """
@@ -81,10 +81,14 @@ def process_video_mock(video_id, file_path):
     logging.info(f"Finished {video_id}")
 
 def monitoring_loop():
+    """
+    Main worker loop to monitor and process video tasks.
+    """
+
     engine.dispose()  # Ensure new connections for this process
 
     logging.info(f"{multiprocessing.current_process().name} started.")
-    
+
     while not exit_event.is_set():
         session = SessionLocal()
         try:
@@ -105,7 +109,7 @@ def monitoring_loop():
                 Video.id == task.id,
                 Video.status == original_status # required to avoid race condition
             ).update({"status": new_interim_status})
-            
+
             session.commit()
 
             if rows_affected == 0:
@@ -133,7 +137,11 @@ def monitoring_loop():
         finally:
             session.close()
 
-def signal_handler(sig, frame):
+def signal_handler(_sig, _frame):
+    """
+    Handle shutdown signals to gracefully terminate worker processes.
+    """
+
     logging.info("Shutdown signal received. Finishing current tasks...")
     exit_event.set()
 

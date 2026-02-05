@@ -4,17 +4,15 @@ services:
   backend:
     build: ./backend
     container_name: boum-backend
-    ports:
-      - "8000:8000"
     networks:
       - boum-network
     environment:
-      - DATABASE_URL=sqlite+pysqlite://${DATABASE_DEST_URL}
+      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_URL}
       - UPLOAD_FOLDER=${VIDEO_INPUT_DIR:-/data/input}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
     volumes:
-      - ${DATABASE_LOCAL_PATH}:/app.db:rw
+      - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
       - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
 
   video_processor:
@@ -24,16 +22,14 @@ services:
       - boum-network
     environment:
       - VIDEO_INPUT_DIR=${VIDEO_INPUT_DIR:-/data/input}
-      - DATABASE_URL=sqlite+pysqlite://${DATABASE_DEST_URL}
+      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_URL}
     volumes:
       - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
-      - ${DATABASE_LOCAL_PATH}:/app.db:rw
+      - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
 
   frontend:
     build: ./frontend
     container_name: boum-frontend
-    ports:
-      - "3000:3000"
     networks:
       - boum-network
     depends_on:
@@ -43,8 +39,8 @@ services:
     image: docker.io/nginx:alpine
     container_name: boum-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "8000:80"
+      - "8443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     networks:
