@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   backend:
@@ -28,6 +28,16 @@ services:
     volumes:
       - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
       - ${DATABASE_LOCAL_PATH}:/app.db:rw
+
+  frontend:
+    build: ./frontend
+    container_name: boum-frontend
+    ports:
+      - "3000:3000"
+    networks:
+      - boum-network
+    depends_on:
+      - backend
 
   nginx:
     image: docker.io/nginx:alpine
