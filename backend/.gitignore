@@ -1,0 +1,12 @@
+*
+!requirements.txt
+!entry.sh
+!Dockerfile
+!migrations/
+!app/
+!app/
+app//*.pyc
+!tests/
+!tests/*
+!run.py
+!.gitignore
