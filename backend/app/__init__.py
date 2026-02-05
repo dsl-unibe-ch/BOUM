@@ -9,9 +9,10 @@ from app.extensions import db
 from app.config import Config
 
 def setup_db(app: Flask):
-    from app.models import User, UserRole
+    from app.models import User, UserRole, Video
 
     with app.app_context():
+        print(f"Registered tables: {db.metadata.tables.keys()}")
         db.create_all()
 
         admin_username = "admin"
