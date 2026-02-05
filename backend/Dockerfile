@@ -2,18 +2,16 @@ FROM docker.io/python:3.12-slim-bookworm
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PATH="/home/appuser/.local/bin:$PATH"
+    PATH="/root/.local/bin:$PATH"
 
-RUN groupadd -g 999 appuser && \
-    useradd -r -u 999 -g appuser appuser
-WORKDIR /home/appuser/app
+WORKDIR /app
 
-USER appuser
-COPY --chown=appuser:appuser requirements.txt .
+COPY requirements.txt .
+
 RUN pip install --no-cache-dir --user -r requirements.txt && \
     pip install --no-cache-dir --user gunicorn
 
-COPY --chown=appuser:appuser . .
+COPY . .
 
 EXPOSE 8000
 
