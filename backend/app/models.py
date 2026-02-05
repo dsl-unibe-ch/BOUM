@@ -2,7 +2,7 @@ from sqlalchemy import ForeignKey, Integer, String, LargeBinary
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bcrypt import hashpw, gensalt, checkpw
 from app.extensions import Base
-from app.constants import UserRole, VideoStatus
+from app.constants import MAX_VIDEO_NAME_LEN, UserRole, VideoStatus
 
 
 class User(Base):
@@ -36,10 +36,10 @@ class User(Base):
 class Video(Base):
     __tablename__ = "videos"
 
-    MAX_NAME_LEN = 200
+    MAX_NAME_LEN = MAX_VIDEO_NAME_LEN
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    filename: Mapped[str] = mapped_column(String(MAX_NAME_LEN), nullable=False)
+    filename: Mapped[str] = mapped_column(String(MAX_VIDEO_NAME_LEN), nullable=False)
     path: Mapped[str] = mapped_column(String(200), nullable=False)
 
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)

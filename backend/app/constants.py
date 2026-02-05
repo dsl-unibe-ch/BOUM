@@ -1,5 +1,7 @@
 from enum import IntEnum
 
+MAX_VIDEO_NAME_LEN = 200
+
 class UserRole(IntEnum):
     ADMIN = 0
     USER = 1
