@@ -5,6 +5,7 @@ from sqlalchemy import event
 from app.routes.auth import auth_bp
 from app.routes.users import user_bp
 from app.routes.videos import video_bp
+from app.routes.audio import audio_bp
 from app.extensions import db
 from app.config import Config
 
@@ -72,5 +73,6 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/user')
     app.register_blueprint(video_bp, url_prefix='/api/video')
+    app.register_blueprint(audio_bp, url_prefix='/api/audio')
 
     return app
