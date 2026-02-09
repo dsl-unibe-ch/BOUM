@@ -36,12 +36,12 @@ SWAGGER_CONFIG = {
     "specs": [
         {
             "endpoint": 'apispec',
-            "route": '/openapi/apispec.json',
+            "route": '/api/docs/static/apispec.json',
             "rule_filter": lambda _: True,
             "model_filter": lambda _: True,
         }
     ],
-    "static_url_path": "/openapi",
+    "static_url_path": "/api/docs/static/",
     "swagger_ui": True,
     "specs_route": "/api/docs/" 
 }
