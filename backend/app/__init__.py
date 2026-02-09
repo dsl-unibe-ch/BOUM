@@ -57,7 +57,9 @@ def create_app():
 
     CORS(app, resources={r"/*": {"origins": "*"}})
 
-    swagger = Swagger(app, config=SWAGGER_CONFIG, template=SWAGGER_TEMPLATE)
+    swagger = Swagger(
+        app, config=SWAGGER_CONFIG, template=SWAGGER_TEMPLATE, merge=False
+    )
 
     app.config.from_object(Config)
 

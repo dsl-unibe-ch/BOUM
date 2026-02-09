@@ -14,39 +14,41 @@ user_bp = Blueprint('user', __name__)
 def add_user(_username: str, _role: int):
     """
     Add a new user to the system (admin only).
-
     ---
     security:
-        -  Bearer: []
-    parameters:
-        -   name: body
-            in: body
-            required: true
-            schema:
-                id: UserCreateData
-                required:
-                    - username
-                    - password
-                properties:
-                    username:
-                        type: string
-                    password:
-                        type: string
+        - Bearer: []
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    required:
+                        - username
+                        - password
+                    properties:
+                        username:
+                            type: string
+                        password:
+                            type: string
     responses:
         201:
             description: User created successfully
-            schema:
-                properties:
-                    msg:
-                        type: string
-                    username:
-                        type: string
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+                            username:
+                                type: string
         400:
-            description: Bad request (validation failed)
+            description: Bad request
         401:
-            description: Unauthorized (authentication required)
+            description: Unauthorized
         403:
-            description: Forbidden (admin only endpoint)
+            description: Forbidden (admin only)
         409:
             description: Username already exists
     """

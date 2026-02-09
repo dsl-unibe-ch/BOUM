@@ -14,22 +14,25 @@ class VideoStatus(IntEnum):
     PROCESSED = 4
     FAILED = 5
 
+
 SWAGGER_TEMPLATE = {
-    "swagger": "2.0",
+    "swagger": None,
+    "openapi": "3.0.0",
     "info": {
         "title": "My Video API",
         "version": "1.0.0",
     },
-    "securityDefinitions": {
-        "Bearer": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",
-            "description": "JWT Authorization header using the Bearer scheme. Example: \"Authorization: Bearer {token}\""
+    "components": {
+        "securitySchemes": {
+            "Bearer": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
         }
-    }
-}
-
+    },
+    "security": [{"Bearer": []}]
+}  # type: ignore
 
 SWAGGER_CONFIG = {
     "headers": [],

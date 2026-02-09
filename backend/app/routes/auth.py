@@ -13,30 +13,34 @@ def login():
     """
     Login endpoint to obtain a Bearer Token.
     ---
-    parameters:
-        -   name: body
-            in: body
-            required: true
-            schema:
-                id: LoginData
-                required:
-                    - username
-                    - password
-                properties:
-                    username:
-                        type: string
-                    password:
-                        type: string
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    required:
+                        - username
+                        - password
+                    properties:
+                        username:
+                            type: string
+                        password:
+                            type: string
     responses:
         200:
             description: Successful login
-            schema:
-                properties:
-                    bearer:
-                        type: string
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            bearer:
+                                type: string
         401:
             description: Invalid username or password
     """
+
     login_dto = UserSimpleDTO(**request.get_json())
 
     user = db.session.execute(

@@ -40,6 +40,38 @@ Rules:
 @audio_bp.route('/', methods=['POST'])
 @require_authentication
 def analyze_audio(_user_id, _role):
+    """
+    Upload an audio file and extract metadata.
+    ---
+    security:
+        - Bearer: []
+    requestBody:
+        content:
+            multipart/form-data:
+                schema:
+                    type: object
+                    properties:
+                        file:
+                            type: string
+                            format: binary
+                            description: The audio file to analyze
+                    required:
+                        - file
+    responses:
+        200:
+            description: Analysis successful
+            content:
+                application/json:
+                    schema:
+                        type: object
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized
+        502:
+            description: Upstream service error
+    """
+
     headers = {
         'Authorization': f"Bearer {current_app.config["GPUSTACK_API_TOKEN"]}"
     }
