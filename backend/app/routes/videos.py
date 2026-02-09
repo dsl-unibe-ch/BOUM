@@ -12,7 +12,31 @@ video_bp = Blueprint('video', __name__)
 
 @video_bp.route('/', methods=['POST'])
 @require_authentication
-def upload_video(user_id, role):
+def upload_video(user_id, _role):
+
+    """
+    Upload videos to upload directory for further processing.
+
+    ---
+    security:
+        - Bearer: []
+    consumes:
+        -   multipart/form-data
+    parameters:
+        -   name: file
+            in: formData
+            type: file
+            required: true
+            description: The video file to upload
+    responses:
+        201:
+            description: Video uploaded successfully
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized (authentication required)
+    """
+
     if "file" not in request.files:
         return jsonify({"msg": "No file part"}), 400
 
@@ -58,6 +82,32 @@ def upload_video(user_id, role):
 @video_bp.route('/<int:video_id>', methods=['GET'])
 @require_authentication
 def get_video(user_id, role, video_id):
+    """
+    Download a video file by its ID.
+
+    ---
+    security:
+        -   Bearer: []
+    parameters:
+        -   name: video_id
+            in: path
+            type: integer
+            required: true
+            description: The ID of the video to download
+    responses:
+        200:
+            description: Video file returned successfully
+            content:
+                application/octet-stream:
+                    schema:
+                        type: string
+                        format: binary
+        401:
+            description: Unauthorized (authentication required)
+        404:
+            description: Video not found
+    """
+
     video = db.session.get(Video, video_id)
 
     if not video or not (video.owner_id == user_id or role == UserRole.ADMIN):
@@ -81,6 +131,27 @@ def get_video(user_id, role, video_id):
 @video_bp.route('/<int:video_id>', methods=['DELETE'])
 @require_authentication
 def delete_video(user_id, role, video_id):
+    """
+    Delete a video by its ID.
+
+    ---
+    security:
+        -   Bearer: []
+    parameters:
+        -   name: video_id
+            in: path
+            type: integer
+            required: true
+            description: The ID of the video to delete
+    responses:
+        200:
+            description: Video deleted successfully
+        401:
+            description: Unauthorized (authentication required)
+        404:
+            description: Video not found
+    """
+
     video = db.session.get(Video, video_id)
 
     if not video or (video.owner_id != user_id and role != UserRole.ADMIN):
@@ -100,6 +171,34 @@ def delete_video(user_id, role, video_id):
 @require_authentication
 @require_admin
 def list_videos(_user_id, _role):
+    """
+    List all videos in the system (admin only).
+
+    ---
+    security:
+        -   Bearer: []
+    responses:
+        200:
+            description: List of videos returned successfully
+            content:
+                application/json:
+                    schema:
+                        type: array
+                        items:
+                            type: object
+                            properties:
+                                id:
+                                    type: integer
+                                filename:
+                                    type: string
+                                owner_id:
+                                    type: integer
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (admin only)
+    """
+
     videos = db.session.execute(db.select(Video)).scalars().all()
 
     video_list = [
@@ -117,6 +216,38 @@ def list_videos(_user_id, _role):
 @video_bp.route('/user/<int:owner_id>', methods=['GET'])
 @require_authentication
 def list_user_videos(user_id, role, owner_id):
+    """
+    List all videos owned by a specific user.
+
+    ---
+    security:
+        -   Bearer: []
+    parameters:
+        -   name: owner_id
+            in: path
+            type: integer
+            required: true
+            description: The ID of the user whose videos to list
+    responses:
+        200:
+            description: List of videos returned successfully
+            content:
+                application/json:
+                    schema:
+                        type: array
+                        items:
+                            type: object
+                            properties:
+                                id:
+                                    type: integer
+                                filename:
+                                    type: string
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (only the owner or admin can view)
+    """
+
     if user_id != owner_id and role != UserRole.ADMIN:
         return jsonify({"msg": "Forbidden"}), 403
 
@@ -138,6 +269,30 @@ def list_user_videos(user_id, role, owner_id):
 @video_bp.route('/me', methods=['GET'])
 @require_authentication
 def list_my_videos(user_id, _role):
+    """
+    List all videos owned by the authenticated user.
+
+    ---
+    security:
+        -   Bearer: []
+    responses:
+        200:
+            description: List of videos returned successfully
+            content:
+                application/json:
+                    schema:
+                        type: array
+                        items:
+                            type: object
+                            properties:
+                                id:
+                                    type: integer
+                                filename:
+                                    type: string
+        401:
+            description: Unauthorized (authentication required)
+    """
+
     videos = db.session.execute(
         db.select(Video).filter_by(owner_id=user_id)
     ).scalars().all()

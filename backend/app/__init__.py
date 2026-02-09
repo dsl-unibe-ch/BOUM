@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from sqlalchemy import event
+from flasgger import Swagger  # type: ignore
 
 from app.routes.auth import auth_bp
 from app.routes.users import user_bp
@@ -8,6 +9,7 @@ from app.routes.videos import video_bp
 from app.routes.audio import audio_bp
 from app.extensions import db
 from app.config import Config
+from app.constants import SWAGGER_CONFIG, SWAGGER_TEMPLATE
 
 def setup_db(app: Flask):
     from app.models import User, UserRole, Video
@@ -54,6 +56,8 @@ def create_app():
     app = Flask(__name__)
 
     CORS(app, resources={r"/*": {"origins": "*"}})
+
+    swagger = Swagger(app, config=SWAGGER_CONFIG, template=SWAGGER_TEMPLATE)
 
     app.config.from_object(Config)
 
