@@ -193,6 +193,8 @@ def list_videos(_user_id, _role):
                                     type: string
                                 owner_id:
                                     type: integer
+                                status:
+                                    type: integer
         401:
             description: Unauthorized (authentication required)
         403:
@@ -205,7 +207,8 @@ def list_videos(_user_id, _role):
         {
             "id": video.id,
             "filename": video.filename,
-            "owner_id": video.owner_id
+            "owner_id": video.owner_id,
+            "status": video.status
         }
         for video in videos
     ]
@@ -242,6 +245,8 @@ def list_user_videos(user_id, role, owner_id):
                                     type: integer
                                 filename:
                                     type: string
+                                status:
+                                    type: integer
         401:
             description: Unauthorized (authentication required)
         403:
@@ -259,6 +264,7 @@ def list_user_videos(user_id, role, owner_id):
         {
             "id": video.id,
             "filename": video.filename,
+            "status": video.status,
         }
         for video in videos
     ]
@@ -289,6 +295,8 @@ def list_my_videos(user_id, _role):
                                     type: integer
                                 filename:
                                     type: string
+                                status:
+                                    type: integer
         401:
             description: Unauthorized (authentication required)
     """
@@ -301,6 +309,7 @@ def list_my_videos(user_id, _role):
         {
             "id": video.id,
             "filename": video.filename,
+            "status": video.status,
         }
         for video in videos
     ]

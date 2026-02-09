@@ -19,7 +19,7 @@ SWAGGER_TEMPLATE = {
     "swagger": None,
     "openapi": "3.0.0",
     "info": {
-        "title": "My Video API",
+        "title": "BOUM Backend API",
         "version": "1.0.0",
     },
     "components": {
