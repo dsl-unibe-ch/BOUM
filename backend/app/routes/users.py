@@ -12,6 +12,45 @@ user_bp = Blueprint('user', __name__)
 @require_admin
 @validate_body(UserSimpleDTO)
 def add_user(_username: str, _role: int):
+    """
+    Add a new user to the system (admin only).
+
+    ---
+    security:
+        -  Bearer: []
+    parameters:
+        -   name: body
+            in: body
+            required: true
+            schema:
+                id: UserCreateData
+                required:
+                    - username
+                    - password
+                properties:
+                    username:
+                        type: string
+                    password:
+                        type: string
+    responses:
+        201:
+            description: User created successfully
+            schema:
+                properties:
+                    msg:
+                        type: string
+                    username:
+                        type: string
+        400:
+            description: Bad request (validation failed)
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (admin only endpoint)
+        409:
+            description: Username already exists
+    """
+
     login_dto = UserSimpleDTO(**request.get_json())
 
     existing_user = db.session.execute(
@@ -31,6 +70,27 @@ def add_user(_username: str, _role: int):
 @user_bp.route('/me', methods=['GET'])
 @require_authentication
 def get_my_info(user_id: int, _role: int):
+    """
+    Get the authenticated user's information.
+
+    ---
+    security:
+        -  Bearer: []
+    responses:
+        200:
+            description: User information returned successfully
+            schema:
+                properties:
+                    id:
+                        type: integer
+                    username:
+                        type: string
+                    role:
+                        type: integer
+        401:
+            description: Unauthorized (authentication required)
+    """
+
     user = db.session.execute(
         db.select(User).filter_by(id=user_id)
     ).scalar_one_or_none()
@@ -48,6 +108,37 @@ def get_my_info(user_id: int, _role: int):
 @require_authentication
 @require_admin
 def get_user_info(_user_id: int, _role: int, target_user_id: int):
+    """
+    Get information about a specific user by ID (admin only).
+
+    ---
+    security:
+        -  Bearer: []
+    parameters:
+        -   name: target_user_id
+            in: path
+            type: integer
+            required: true
+            description: The ID of the user to retrieve information for
+    responses:
+        200:
+            description: User information returned successfully
+            schema:
+                properties:
+                    id:
+                        type: integer
+                    username:
+                        type: string
+                    role:
+                        type: integer
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (admin only endpoint)
+        404:
+            description: User not found
+    """
+
     user = db.session.execute(
         db.select(User).filter_by(id=target_user_id)
     ).scalar_one_or_none()
@@ -65,6 +156,32 @@ def get_user_info(_user_id: int, _role: int, target_user_id: int):
 @require_authentication
 @require_admin
 def list_users(_user_id: int, _role: int):
+    """
+    Get a list of all users in the system (admin only).
+
+    ---
+    security:
+        -  Bearer: []
+    responses:
+        200:
+            description: List of users returned successfully
+            schema:
+                type: array
+                items:
+                    type: object
+                    properties:
+                        id:
+                            type: integer
+                        username:
+                            type: string
+                        role:
+                            type: integer
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (admin only endpoint)
+    """
+
     users = db.session.execute(db.select(User)).scalars().all()
 
     user_list = [
