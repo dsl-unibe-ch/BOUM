@@ -4,9 +4,10 @@
 !Dockerfile
 !migrations/
 !app/
-!app/
-app//*.pyc
+!app/**
 !tests/
 !tests/*
 !run.py
 !.gitignore
+**/*.pyc
+**/__pycache__
