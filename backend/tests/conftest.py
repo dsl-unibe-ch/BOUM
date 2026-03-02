@@ -1,3 +1,6 @@
+import io
+import os
+
 import pytest
 from app import create_app
 from app.extensions import db
@@ -23,7 +26,14 @@ def app():
     })
 
     with app.app_context():
+        os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
         db.create_all()
+
+        from app.models import User
+        admin = User(username="admin", pw="adminpass", role=UserRole.ADMIN)
+        db.session.add(admin)
+        db.session.commit()
+
         yield app
         db.drop_all()
 
@@ -42,3 +52,64 @@ def user_token(_client, app):
     from app.utils import create_jwt
     with app.app_context():
         return create_jwt(user_id=1, role=UserRole.USER)
+
+@pytest.fixture
+def experiment(client, admin_token):
+    resp = client.post(
+        "/api/experiment/",
+        json={"name": "Test Experiment"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert resp.status_code == 201
+    return resp.json["id"]
+
+@pytest.fixture
+def member_user(client, admin_token, experiment, app):
+    from app.models import User
+    from app.utils import create_jwt
+    client.post(
+        "/api/user/",
+        json={"username": "member", "password": "memberpass"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    with app.app_context():
+        user = db.session.execute(db.select(User).filter_by(username="member")).scalar_one()
+        user_id = user.id
+        token = create_jwt(user_id=user_id, role=UserRole.USER)
+    client.post(
+        f"/api/experiment/{experiment}/users",
+        json={"user_id": user_id},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    return user_id, token
+
+@pytest.fixture
+def non_member_user(client, admin_token, app):
+    from app.models import User
+    from app.utils import create_jwt
+    client.post(
+        "/api/user/",
+        json={"username": "nonmember", "password": "nonmemberpass"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    with app.app_context():
+        user = db.session.execute(db.select(User).filter_by(username="nonmember")).scalar_one()
+        user_id = user.id
+        token = create_jwt(user_id=user_id, role=UserRole.USER)
+    return user_id, token
+
+@pytest.fixture
+def video_in_experiment(client, member_user, experiment, app):
+    from app.models import Video
+    _, token = member_user
+    client.post(
+        f"/api/experiment/{experiment}/videos",
+        data={'file': (io.BytesIO(b"fake video content"), 'test.mkv')},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    with app.app_context():
+        video = db.session.execute(
+            db.select(Video).filter_by(experiment_id=experiment)
+        ).scalars().first()
+        assert video is not None
+        return video.id
