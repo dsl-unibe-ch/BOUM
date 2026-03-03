@@ -18,6 +18,8 @@ def create_experiment(_user_id, _role):
     Create a new experiment.
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     requestBody:
@@ -73,6 +75,8 @@ def list_experiments(_user_id, _role):
     List all experiments (admin only).
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     responses:
@@ -118,6 +122,8 @@ def list_my_experiments(user_id, _role):
     List all experiments the authenticated user is authorized to access.
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     responses:
@@ -161,6 +167,8 @@ def get_experiment(user_id, role, experiment_id):
     Get details of an experiment by ID. Accessible by admin or participant.
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -231,6 +239,8 @@ def delete_experiment(user_id, role, experiment_id):
     Delete an experiment by ID (admin or participant). Associated videos are detached, not deleted.
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -270,6 +280,8 @@ def add_user_to_experiment(_user_id, role, experiment_id):
     Add a user to an experiment (admin or participant).
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -335,6 +347,8 @@ def remove_user_from_experiment(_user_id, _role, experiment_id, target_user_id):
     Remove a user from an experiment (admin only).
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -379,6 +393,8 @@ def upload_video_to_experiment(user_id, role, experiment_id):
     The uploader must be a member of the experiment (or admin).
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -458,6 +474,8 @@ def download_video(user_id, role, experiment_id, video_id):
     Download a video file from an experiment.
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:
@@ -516,6 +534,8 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
     Delete a video from an experiment (file and DB record).
 
     ---
+    tags:
+        - Experiments
     security:
         - Bearer: []
     parameters:

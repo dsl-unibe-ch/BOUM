@@ -15,6 +15,8 @@ def list_videos(_user_id, _role):
     List all videos in the system (admin only).
 
     ---
+    tags:
+        - Videos
     security:
         -   Bearer: []
     responses:

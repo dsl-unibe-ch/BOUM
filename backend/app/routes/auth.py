@@ -13,6 +13,8 @@ def login():
     """
     Login endpoint to obtain a Bearer Token.
     ---
+    tags:
+        - Auth
     requestBody:
         required: true
         content:
