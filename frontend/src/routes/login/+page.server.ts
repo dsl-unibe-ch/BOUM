@@ -50,7 +50,6 @@ export const actions: Actions = {
 			expires: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
 			path: '/',
 			httpOnly: true,
-			secure: true,
 			sameSite: 'strict'
 		});
 
