@@ -15,7 +15,7 @@ experiment_bp = Blueprint('experiment', __name__)
 @require_authentication
 def create_experiment(_user_id, _role):
     """
-    Create a new experiment (admin only).
+    Create a new experiment.
 
     ---
     security:
@@ -381,19 +381,26 @@ def upload_video_to_experiment(user_id, role, experiment_id):
     ---
     security:
         - Bearer: []
-    consumes:
-        - multipart/form-data
     parameters:
         - name: experiment_id
           in: path
-          type: integer
+          schema:
+              type: integer
           required: true
           description: The ID of the experiment
-        - name: file
-          in: formData
-          type: file
-          required: true
-          description: The video file to upload
+    requestBody:
+        required: true
+        content:
+            multipart/form-data:
+                schema:
+                    type: object
+                    properties:
+                        file:
+                            type: string
+                            format: binary
+                            description: The video file to upload
+                    required:
+                        - file
     responses:
         201:
             description: Video uploaded successfully
