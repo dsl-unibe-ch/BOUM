@@ -15,6 +15,8 @@ def add_user(_username: str, _role: int):
     """
     Add a new user to the system (admin only).
     ---
+    tags:
+        - Users
     security:
         - Bearer: []
     requestBody:
@@ -76,6 +78,8 @@ def get_my_info(user_id: int, _role: int):
     Get the authenticated user's information.
 
     ---
+    tags:
+        - Users
     security:
         -  Bearer: []
     responses:
@@ -114,6 +118,8 @@ def get_user_info(_user_id: int, _role: int, target_user_id: int):
     Get information about a specific user by ID (admin only).
 
     ---
+    tags:
+        - Users
     security:
         -  Bearer: []
     parameters:
@@ -162,6 +168,8 @@ def list_users(_user_id: int, _role: int):
     Get a list of all users in the system (admin only).
 
     ---
+    tags:
+        - Users
     security:
         -  Bearer: []
     responses:

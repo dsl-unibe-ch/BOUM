@@ -43,6 +43,8 @@ def analyze_audio(_user_id, _role):
     """
     Upload an audio file and extract metadata.
     ---
+    tags:
+        - Audio
     security:
         - Bearer: []
     requestBody:

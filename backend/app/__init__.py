@@ -7,12 +7,13 @@ from app.routes.auth import auth_bp
 from app.routes.users import user_bp
 from app.routes.videos import video_bp
 from app.routes.audio import audio_bp
+from app.routes.experiments import experiment_bp
 from app.extensions import db
 from app.config import Config
 from app.constants import SWAGGER_CONFIG, SWAGGER_TEMPLATE
 
 def setup_db(app: Flask):
-    from app.models import User, UserRole, Video
+    from app.models import User, UserRole, Video, Experiment
 
     with app.app_context():
         print(f"Registered tables: {db.metadata.tables.keys()}")
@@ -80,5 +81,6 @@ def create_app():
     app.register_blueprint(user_bp, url_prefix='/api/user')
     app.register_blueprint(video_bp, url_prefix='/api/video')
     app.register_blueprint(audio_bp, url_prefix='/api/audio')
+    app.register_blueprint(experiment_bp, url_prefix='/api/experiment')
 
     return app

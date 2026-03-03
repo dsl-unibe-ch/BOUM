@@ -53,7 +53,7 @@ class Video(Base):
 def validate_video_mock(file_path):
     """
     Simulate video validation
-    
+
     :param file_path: Description
     :return: bool
     """
@@ -101,7 +101,7 @@ def monitoring_loop():
                 continue
 
             original_status = task.status
-            
+
             new_interim_status = (VideoStatus.SEEN if original_status == VideoStatus.PENDING 
                                   else VideoStatus.PROCESSING)
 
