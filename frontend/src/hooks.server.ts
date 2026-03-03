@@ -11,7 +11,7 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		return resolve(event);
 	}
 
-	const user = await fetch(`${API_BASE_URL}/user/me/`, {
+	const user = await fetch(`${API_BASE_URL}/user/me`, {
 		headers: {
 			Authorization: `Bearer ${sessionToken}`
 		}
