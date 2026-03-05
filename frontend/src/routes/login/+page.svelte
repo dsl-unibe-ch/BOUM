@@ -1,9 +1,52 @@
 <script lang="ts">
-	import { enhance } from '$app/forms';
-	import type { ActionData } from './$types';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
+	import { API_BASE_URL } from '$lib/constants';
+	import { onMount } from 'svelte';
 
-	let { form }: { form: ActionData } = $props();
+	let username = $state('');
+	let password = $state('');
+	let error = $state('');
 	let submitting = $state(false);
+
+	onMount(() => {
+		if (page.data.user) {
+			goto('/');
+		}
+	});
+
+	async function handleLogin(e: SubmitEvent) {
+		e.preventDefault();
+		error = '';
+		submitting = true;
+
+		try {
+			const response = await fetch(`${API_BASE_URL}/auth/login`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username, password })
+			});
+
+			if (!response.ok) {
+				if (response.status === 401) {
+					error = 'Invalid username or password';
+				} else {
+					error = 'Something went wrong. Please try again later.';
+				}
+				return;
+			}
+
+			const { bearer } = await response.json();
+			const expires = new Date(Date.now() + 30 * 60 * 1000).toUTCString();
+			document.cookie = `auth-session=${bearer}; expires=${expires}; path=/; SameSite=Strict`;
+
+			await goto('/');
+		} catch {
+			error = 'Could not reach the server. Please try again later.';
+		} finally {
+			submitting = false;
+		}
+	}
 </script>
 
 <div class="flex min-h-screen items-center justify-center">
@@ -13,30 +56,19 @@
 			<p class="preset-typo-muted mt-1">Sign in to your account</p>
 		</header>
 
-		{#if form?.message}
+		{#if error}
 			<aside class="alert preset-filled-error-500">
-				<p>{form.message}</p>
+				<p>{error}</p>
 			</aside>
 		{/if}
 
-		<form
-			method="POST"
-			action="?/login"
-			use:enhance={() => {
-				submitting = true;
-				return async ({ update }) => {
-					submitting = false;
-					await update();
-				};
-			}}
-			class="space-y-4"
-		>
+		<form onsubmit={handleLogin} class="space-y-4">
 			<label class="label">
 				<span class="label-text">Username</span>
 				<input
 					class="input"
 					type="text"
-					name="username"
+					bind:value={username}
 					placeholder="Enter your username"
 					required
 					minlength={3}
@@ -49,7 +81,7 @@
 				<input
 					class="input"
 					type="password"
-					name="password"
+					bind:value={password}
 					placeholder="Enter your password"
 					required
 					minlength={6}
