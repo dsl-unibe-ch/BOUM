@@ -1,7 +1,41 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { authFetch } from '$lib/auth.svelte';
+	import { API_BASE_URL } from '$lib/constants';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data }: { data: PageData } = $props();
+
+	let newName = $state('');
+	let creating = $state(false);
+	let createError = $state('');
+
+	async function createExperiment(e: SubmitEvent) {
+		e.preventDefault();
+		createError = '';
+		creating = true;
+
+		try {
+			const res = await authFetch(`${API_BASE_URL}/experiment/`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name: newName })
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				createError = body?.msg ?? 'Failed to create experiment.';
+				return;
+			}
+
+			newName = '';
+			await invalidateAll();
+		} catch {
+			createError = 'Could not reach the server.';
+		} finally {
+			creating = false;
+		}
+	}
 </script>
 
 {#if data.error}
@@ -19,4 +53,27 @@
 			</ul>
 		{/if}
 	</div>
+{/if}
+
+<form onsubmit={createExperiment} class="mb-6 flex gap-2">
+	<input
+		class="input flex-1"
+		type="text"
+		bind:value={newName}
+		placeholder="New experiment name"
+		required
+		minlength={1}
+		maxlength={100}
+	/>
+	<button type="submit" class="btn preset-filled-primary-500" disabled={creating}>
+		{#if creating}
+			Creating...
+		{:else}
+			Create
+		{/if}
+	</button>
+</form>
+
+{#if createError}
+	<aside class="alert mb-4 preset-filled-error-500"><p>{createError}</p></aside>
 {/if}
