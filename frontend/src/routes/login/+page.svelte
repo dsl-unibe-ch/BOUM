@@ -1,19 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { API_BASE_URL } from '$lib/constants';
-	import { onMount } from 'svelte';
+	import { setToken } from '$lib/auth.svelte';
 
 	let username = $state('');
 	let password = $state('');
 	let error = $state('');
 	let submitting = $state(false);
-
-	onMount(() => {
-		if (page.data.user) {
-			goto('/');
-		}
-	});
 
 	async function handleLogin(e: SubmitEvent) {
 		e.preventDefault();
@@ -37,8 +30,7 @@
 			}
 
 			const { bearer } = await response.json();
-			const expires = new Date(Date.now() + 30 * 60 * 1000).toUTCString();
-			document.cookie = `auth-session=${bearer}; expires=${expires}; path=/; SameSite=Strict`;
+			setToken(bearer);
 
 			await goto('/');
 		} catch {

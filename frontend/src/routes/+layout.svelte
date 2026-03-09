@@ -1,7 +1,7 @@
 <script lang="ts">
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
-	import { enhance } from '$app/forms';
+	import { logout } from '$lib/auth.svelte';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
@@ -12,9 +12,7 @@
 {#if data.user}
 	<header class="flex items-center justify-between p-4">
 		<span class="font-semibold">{data.user.username}</span>
-		<form method="POST" action="/?/logout" use:enhance>
-			<button type="submit" class="btn preset-filled-surface-500">Logout</button>
-		</form>
+		<button onclick={logout} class="btn preset-filled-surface-500">Logout</button>
 	</header>
 {/if}
 
