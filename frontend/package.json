@@ -40,6 +40,10 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^0.577.0",
-		"jose": "^6.2.1"
+		"@sparkjsdev/spark": "^0.1.10",
+		"@threlte/core": "^8.4.1",
+		"@types/three": "^0.183.1",
+		"jose": "^6.2.1",
+		"three": "^0.183.2"
 	}
 }
