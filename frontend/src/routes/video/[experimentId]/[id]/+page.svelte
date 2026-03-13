@@ -5,6 +5,7 @@
 	import { API_BASE_URL } from '$lib/constants';
 	import { type ExperimentMetadata, emptyMetadata } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
+	import PointCloudViewer from '$lib/components/PointCloudViewer.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -126,6 +127,11 @@
 		<div class="mb-4 card preset-outlined-surface-200-800 p-4">
 			<p><strong>Status:</strong> {STATUS_LABELS[data.video.status] ?? 'Unknown'}</p>
 			<p><strong>ID:</strong> {data.video.id}</p>
+		</div>
+
+		<h2 class="mb-2 h4 font-semibold">Point Cloud</h2>
+		<div class="mb-4">
+			<PointCloudViewer plyUrl="/point_cloud.ply" />
 		</div>
 
 		<h2 class="mb-2 h4 font-semibold">Metadata</h2>
