@@ -27,16 +27,20 @@ export function clearToken(): void {
 	localStorage.removeItem(TOKEN_KEY);
 }
 
-export async function authFetch(url: string, options: RequestInit = {}): Promise<Response> {
+export async function authFetch(
+	url: string,
+	options: RequestInit = {},
+	fetchFn: typeof fetch = fetch
+): Promise<Response> {
 	const token = getToken();
 	const headers = new Headers(options.headers);
 	if (token) {
 		headers.set('Authorization', `Bearer ${token}`);
 	}
-	return fetch(url, { ...options, headers });
+	return fetchFn(url, { ...options, headers });
 }
 
-export async function loadUser(): Promise<User | null> {
+export async function loadUser(fetchFn: typeof fetch = fetch): Promise<User | null> {
 	const token = getToken();
 	if (!token) {
 		user = null;
@@ -44,7 +48,7 @@ export async function loadUser(): Promise<User | null> {
 	}
 
 	try {
-		const res = await authFetch(`${API_BASE_URL}/user/me`);
+		const res = await authFetch(`${API_BASE_URL}/user/me`, {}, fetchFn);
 		if (!res.ok) {
 			clearToken();
 			user = null;

@@ -4,7 +4,7 @@ import { getToken, getUser, loadUser } from '$lib/auth.svelte';
 
 export const ssr = false;
 
-export const load: LayoutLoad = async ({ url }) => {
+export const load: LayoutLoad = async ({ url, fetch }) => {
 	const token = getToken();
 
 	if (!token) {
@@ -16,7 +16,7 @@ export const load: LayoutLoad = async ({ url }) => {
 
 	let user = getUser();
 	if (!user) {
-		user = await loadUser();
+		user = await loadUser(fetch);
 		if (url.pathname !== '/login') {
 			throw redirect(302, '/login');
 		}
