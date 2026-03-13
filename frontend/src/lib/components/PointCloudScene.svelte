@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { T, useThrelte, useTask } from '@threlte/core';
-	import { SplatMesh, SparkRenderer } from '@sparkjsdev/spark';
+	import { SplatMesh } from '@sparkjsdev/spark';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 	let { plyUrl }: { plyUrl: string } = $props();
 
 	const { renderer, invalidate } = useThrelte();
-	const spark = new SparkRenderer({ renderer });
 	const splatMesh = new SplatMesh({ url: plyUrl });
 
 	let controls: OrbitControls | undefined;
@@ -21,7 +20,7 @@
 
 <T.PerspectiveCamera
 	makeDefault
-	position={[0, 0, 5]}
+	position={[0, 2, 5]}
 	fov={60}
 	oncreate={(ref) => ref.lookAt(0, 0, 0)}
 >
@@ -37,5 +36,5 @@
 	{/snippet}
 </T.PerspectiveCamera>
 
-<T is={spark} />
-<T is={splatMesh} />
+<T is={splatMesh} rotation.x={1.3} rotation.y={-0.95} position.y={4.8} />
+<!-- <T.GridHelper args={[10, 10]} /> -->
