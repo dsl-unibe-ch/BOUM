@@ -48,7 +48,22 @@
 		{:else}
 			<ul class="space-y-2">
 				{#each data.experiments as exp (exp.id)}
-					<li class="card preset-outlined-surface-200-800 p-4">{exp.name}</li>
+					<li class="card preset-outlined-surface-200-800 p-4">
+						<h2 class="h4 font-bold">{exp.name}</h2>
+						{#if exp.videos?.length}
+							<ul class="mt-2 space-y-1 pl-4">
+								{#each exp.videos as video (video.id)}
+									<li>
+										<a href="/videos/{video.id}" class="anchor">
+											{video.title || `${exp.name} ${video.id}`}
+										</a>
+									</li>
+								{/each}
+							</ul>
+						{:else}
+							<p class="mt-2 text-sm opacity-60">No videos</p>
+						{/if}
+					</li>
 				{/each}
 			</ul>
 		{/if}
