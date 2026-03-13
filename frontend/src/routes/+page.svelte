@@ -3,12 +3,15 @@
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
 	import { invalidateAll } from '$app/navigation';
+	import ExperimentPanel from '$lib/components/ExperimentPanel.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	let newName = $state('');
 	let creating = $state(false);
 	let createError = $state('');
+	let selectedExp = $state<{ id: number; name: string } | null>(null);
+	let panelOpen = $state(false);
 
 	async function createExperiment(e: SubmitEvent) {
 		e.preventDefault();
@@ -49,7 +52,20 @@
 			<ul class="space-y-2">
 				{#each data.experiments as exp (exp.id)}
 					<li class="card preset-outlined-surface-200-800 p-4">
-						<h2 class="h4 font-bold">{exp.name}</h2>
+						<button
+							type="button"
+							class="cursor-pointer h4 font-bold hover:underline"
+							onclick={() => {
+								if (selectedExp?.id === exp.id) {
+									panelOpen = !panelOpen;
+								} else {
+									selectedExp = exp;
+									panelOpen = true;
+								}
+							}}
+						>
+							{exp.name}
+						</button>
 						{#if exp.videos?.length}
 							<ul class="mt-2 space-y-1 pl-4">
 								{#each exp.videos as video (video.id)}
@@ -69,6 +85,16 @@
 		{/if}
 	</div>
 {/if}
+
+<ExperimentPanel
+	experimentId={selectedExp?.id ?? null}
+	experimentName={selectedExp?.name ?? ''}
+	open={panelOpen}
+	onOpenChange={(isOpen) => {
+		panelOpen = isOpen;
+		if (!isOpen) selectedExp = null;
+	}}
+/>
 
 <form onsubmit={createExperiment} class="mb-6 flex gap-2">
 	<input
