@@ -20,7 +20,9 @@
 	const id = $props.id();
 	const panel = useFloatingPanel({
 		id,
-		onOpenChange: (details) => onOpenChange(details.open)
+		onOpenChange: (details) => onOpenChange(details.open),
+		minSize: { width: 300, height: 200 },
+		defaultSize: { width: 500, height: 500 }
 	});
 
 	// Sync external `open` prop to zag-js via setOpen() to avoid batch crashes
