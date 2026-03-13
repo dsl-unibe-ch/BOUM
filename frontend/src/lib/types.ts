@@ -32,6 +32,13 @@ export interface ExperimentDetail {
 	metadata: ExperimentMetadata | null;
 }
 
+export interface VideoDetail {
+	id: number;
+	filename: string;
+	status: number;
+	metadata: ExperimentMetadata | null;
+}
+
 export function emptyMetadata(): ExperimentMetadata {
 	return {
 		title: '',

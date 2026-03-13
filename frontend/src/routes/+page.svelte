@@ -70,8 +70,8 @@
 							<ul class="mt-2 space-y-1 pl-4">
 								{#each exp.videos as video (video.id)}
 									<li>
-										<a href="/videos/{video.id}" class="anchor">
-											{video.title || `${exp.name} ${video.id}`}
+										<a href="/video/{exp.id}/{video.id}" class="anchor">
+											{video.filename || `Video ${video.id}`}
 										</a>
 									</li>
 								{/each}
@@ -79,6 +79,9 @@
 						{:else}
 							<p class="mt-2 text-sm opacity-60">No videos</p>
 						{/if}
+						<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500 mt-2">
+							Upload new Video
+						</a>
 					</li>
 				{/each}
 			</ul>

@@ -4,6 +4,7 @@
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
 	import { type ExperimentMetadata, type ExperimentDetail, emptyMetadata } from '$lib/types';
+	import MetadataForm from '$lib/components/MetadataForm.svelte';
 
 	let {
 		experimentId,
@@ -90,20 +91,6 @@
 		}
 	}
 
-	const fields: { key: keyof ExperimentMetadata; label: string; type: string }[] = [
-		{ key: 'title', label: 'Title', type: 'text' },
-		{ key: 'species', label: 'Species', type: 'text' },
-		{ key: 'cultivar', label: 'Cultivar', type: 'text' },
-		{ key: 'genotype', label: 'Genotype', type: 'text' },
-		{ key: 'plant_age', label: 'Plant Age', type: 'text' },
-		{ key: 'plant_growth_stage', label: 'Plant Growth Stage', type: 'text' },
-		{ key: 'growth_environment', label: 'Growth Environment', type: 'text' },
-		{ key: 'pot_volume', label: 'Pot Volume', type: 'number' },
-		{ key: 'substrate_type', label: 'Substrate Type', type: 'text' },
-		{ key: 'special_plant_treatments', label: 'Special Plant Treatments', type: 'text' },
-		{ key: 'operator', label: 'Operator', type: 'text' },
-		{ key: 'creation_date', label: 'Creation Date', type: 'datetime-local' }
-	];
 </script>
 
 <FloatingPanel.Provider value={panel}>
@@ -143,29 +130,7 @@
 
 					{#if loadedId !== null && !loading}
 						<form onsubmit={handleSave} class="space-y-3">
-							{#each fields as field (field.key)}
-								<label class="label">
-									<span class="label-text text-sm">{field.label}</span>
-									{#if field.type === 'number'}
-										<input
-											class="input"
-											type="number"
-											step="any"
-											bind:value={metadata[field.key]}
-											placeholder={field.label}
-										/>
-									{:else if field.type === 'datetime-local'}
-										<input class="input" type="datetime-local" bind:value={metadata[field.key]} />
-									{:else}
-										<input
-											class="input"
-											type="text"
-											bind:value={metadata[field.key]}
-											placeholder={field.label}
-										/>
-									{/if}
-								</label>
-							{/each}
+							<MetadataForm bind:metadata disabled={saving} />
 
 							{#if saveMsg}
 								<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>

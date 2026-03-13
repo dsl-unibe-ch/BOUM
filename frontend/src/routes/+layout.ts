@@ -17,9 +17,6 @@ export const load: LayoutLoad = async ({ url, fetch }) => {
 	let user = getUser();
 	if (!user) {
 		user = await loadUser(fetch);
-		if (url.pathname !== '/login') {
-			throw redirect(302, '/login');
-		}
 	}
 
 	return { user };
