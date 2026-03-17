@@ -63,7 +63,12 @@ class VideoMetadata(Base):
     operator: Mapped[Optional[str]] = mapped_column(String(100))
     creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
-    video: Mapped["Video"] = relationship(back_populates="metadata")
+    video: Mapped["Video"] = relationship(back_populates="video_metadata")
+
+    @classmethod
+    def metadata_fields(cls):
+        skip = {"id", "video_id"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
 
 
 class ExperimentMetadataDefaults(Base):
@@ -84,6 +89,11 @@ class ExperimentMetadataDefaults(Base):
     operator: Mapped[Optional[str]] = mapped_column(String(100))
 
     experiment: Mapped["Experiment"] = relationship(back_populates="metadata_defaults")
+
+    @classmethod
+    def metadata_fields(cls):
+        skip = {"id", "experiment_id"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
 
 
 class Video(Base):
@@ -111,9 +121,7 @@ class Video(Base):
         """Populate metadata from experiment defaults, without overwriting existing values."""
         if self.video_metadata is None:
             self.video_metadata = VideoMetadata(video_id=self.id)
-        for field in ExperimentMetadataDefaults.__table__.columns.keys():
-            if field in ("id", "experiment_id"):
-                continue
+        for field in ExperimentMetadataDefaults.metadata_fields():
             if getattr(self.video_metadata, field) is None:
                 setattr(self.video_metadata, field, getattr(defaults, field))
 
