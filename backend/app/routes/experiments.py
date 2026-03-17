@@ -470,7 +470,7 @@ def upload_video_to_experiment(user_id, role, experiment_id):
 
     db.session.commit()
 
-    return jsonify({"msg": "Video uploaded"}), 201
+    return jsonify({"id": new_video.id}), 201
 
 
 @experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>', methods=['GET'])
