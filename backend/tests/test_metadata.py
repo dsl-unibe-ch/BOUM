@@ -1,6 +1,131 @@
 import io
 
 
+# -- Experiment start_date --
+
+def test_create_experiment_without_start_date(client, admin_token):
+    response = client.post(
+        "/api/experiment/",
+        json={"name": "No Date Experiment"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 201
+    assert response.json["start_date"] is None
+
+
+def test_create_experiment_with_start_date(client, admin_token):
+    response = client.post(
+        "/api/experiment/",
+        json={"name": "Dated Experiment", "start_date": "2026-03-18T09:00:00"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 201
+    assert response.json["start_date"] == "2026-03-18T09:00:00"
+
+
+def test_create_experiment_with_invalid_start_date(client, admin_token):
+    response = client.post(
+        "/api/experiment/",
+        json={"name": "Bad Date", "start_date": "not-a-date"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 400
+
+
+def test_get_experiment_returns_start_date(client, experiment, admin_token):
+    response = client.get(
+        f"/api/experiment/{experiment}",
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert "start_date" in response.json
+    assert response.json["start_date"] is None
+
+
+# -- Update experiment (PUT) --
+
+def test_update_experiment_name(client, experiment, admin_token):
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"name": "New Name"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["name"] == "New Name"
+
+
+def test_update_experiment_start_date(client, experiment, admin_token):
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"start_date": "2026-01-15T08:00:00"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["start_date"] == "2026-01-15T08:00:00"
+
+
+def test_update_experiment_both_fields(client, experiment, admin_token):
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"name": "Updated", "start_date": "2026-06-01T12:00:00"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["name"] == "Updated"
+    assert response.json["start_date"] == "2026-06-01T12:00:00"
+
+
+def test_update_experiment_clear_start_date(client, experiment, admin_token):
+    client.put(
+        f"/api/experiment/{experiment}",
+        json={"start_date": "2026-01-01T00:00:00"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"start_date": None},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["start_date"] is None
+
+
+def test_update_experiment_invalid_start_date(client, experiment, admin_token):
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"start_date": "bad"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 400
+
+
+def test_update_experiment_unauthenticated(client, experiment):
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"name": "Nope"}
+    )
+    assert response.status_code == 401
+
+
+def test_update_experiment_non_member(client, experiment, non_member_user):
+    _, token = non_member_user
+    response = client.put(
+        f"/api/experiment/{experiment}",
+        json={"name": "Nope"},
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 404
+
+
+def test_update_experiment_not_found(client, admin_token):
+    response = client.put(
+        "/api/experiment/9999",
+        json={"name": "Nope"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 404
+
+
 # -- Experiment metadata defaults --
 
 def test_set_experiment_metadata_unauthenticated(client, experiment):

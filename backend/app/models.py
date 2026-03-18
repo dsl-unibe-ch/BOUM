@@ -131,6 +131,7 @@ class Experiment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     videos: Mapped[list["Video"]] = relationship(
         back_populates="experiment", foreign_keys="[Video.experiment_id]"
@@ -142,8 +143,8 @@ class Experiment(Base):
         back_populates="experiment", uselist=False, cascade="all, delete-orphan"
     )
 
-    def __init__(self, name: str, users: list[User] | None = None):
-        super().__init__(name=name, users=users or [])
+    def __init__(self, name: str, users: list[User] | None = None, start_date: datetime | None = None):
+        super().__init__(name=name, users=users or [], start_date=start_date)
 
     def is_user_participant(self, user_id: int) -> bool:
         return any(user.id == user_id for user in self.users)
