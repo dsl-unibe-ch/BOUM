@@ -8,27 +8,57 @@ audio_bp = Blueprint('audio', __name__)
 
 PROMPT = """
 System:
-You translate natural language descriptions of plant growth into a JSON object
+You translate natural language descriptions of plant experiments into a JSON object
 with the following format:
 
 {
   "type": "object",
   "properties": {
-    "grown": {
-      "type": "boolean"
+    "title": {
+      "type": "string",
+      "description": "A short descriptive title for the video"
     },
-    "healthy": {
-      "type": "boolean"
+    "species": {
+      "type": "string",
+      "description": "Plant species name"
     },
-    "plant_name": {
-      "type": "string"
+    "cultivar": {
+      "type": "string",
+      "description": "Plant cultivar or variety"
+    },
+    "genotype": {
+      "type": "string",
+      "description": "Genotype identifier"
+    },
+    "plant_age": {
+      "type": "string",
+      "description": "Age of the plant (e.g. '14 days', '3 weeks')"
+    },
+    "plant_growth_stage": {
+      "type": "string",
+      "description": "Growth stage (e.g. 'seedling', 'vegetative', 'flowering')"
+    },
+    "growth_environment": {
+      "type": "string",
+      "description": "Where the plant is grown (e.g. 'greenhouse', 'growth chamber', 'field')"
+    },
+    "pot_volume": {
+      "type": "number",
+      "description": "Volume of the pot in liters"
+    },
+    "substrate_type": {
+      "type": "string",
+      "description": "Growing substrate (e.g. 'soil', 'perlite', 'rockwool')"
+    },
+    "special_plant_treatments": {
+      "type": "string",
+      "description": "Any special treatments applied to the plant"
+    },
+    "operator": {
+      "type": "string",
+      "description": "Name of the person conducting the experiment"
     }
   },
-  "required": [
-    "grown",
-    "healthy",
-    "plant_name"
-  ],
   "additionalProperties": false
 }
 
@@ -66,6 +96,34 @@ def analyze_audio(_user_id, _role):
                 application/json:
                     schema:
                         type: object
+                        properties:
+                            metadata:
+                                type: object
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                            transcription:
+                                type: string
         400:
             description: Bad request
         401:
@@ -138,10 +196,15 @@ def analyze_audio(_user_id, _role):
 
         completion_upstream_response.raise_for_status()
 
-        return json.loads(
+        metadata = json.loads(
             completion_upstream_response
                 .json()["choices"][0]["message"]["content"]
         )
+
+        return jsonify({
+            "metadata": metadata,
+            "transcription": transcription,
+        })
 
     except (KeyError, IndexError, json.JSONDecodeError):
         return jsonify(

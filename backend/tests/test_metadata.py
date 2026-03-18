@@ -146,7 +146,7 @@ def test_get_experiment_metadata_endpoint_null(client, experiment, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
-    assert response.json["metadata_defaults"] is None
+    assert response.json["metadata_defaults"] == {}
 
 
 def test_get_experiment_metadata_endpoint_populated(client, experiment, admin_token):
@@ -173,7 +173,7 @@ def test_get_experiment_metadata_defaults_null(client, experiment, admin_token):
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
-    assert response.json["metadata_defaults"] is None
+    assert response.json["metadata_defaults"] == {}
 
 
 def test_get_experiment_metadata_defaults_populated(client, experiment, admin_token):
@@ -321,7 +321,7 @@ def test_get_video_metadata_null_by_default(client, experiment, video_in_experim
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
-    assert response.json["metadata"] is None
+    assert response.json["metadata"] == {}
 
 
 def test_get_video_metadata_after_setting(client, experiment, video_in_experiment, admin_token):
@@ -372,7 +372,7 @@ def test_upload_no_auto_apply(client, experiment, member_user):
         headers={"Authorization": f"Bearer {token}"}
     )
     video = next(v for v in resp.json["videos"] if v["filename"] == "no_default.mkv")
-    assert video["metadata"] is None
+    assert video["metadata"] == {}
 
 
 # -- GET experiment shows video metadata --

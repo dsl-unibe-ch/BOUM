@@ -498,6 +498,48 @@ def get_video(user_id, role, experiment_id, video_id):
     responses:
         200:
             description: Video details with metadata
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
+                            filename:
+                                type: string
+                            status:
+                                type: integer
+                            download_url:
+                                type: string
+                            metadata:
+                                type: object
+                                nullable: true
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                                    creation_date:
+                                        type: string
+                                        format: date-time
         401:
             description: Unauthorized
         404:
@@ -635,13 +677,13 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
 
 def _serialize_metadata_defaults(defaults):
     if defaults is None:
-        return None
+        return {}
     return {field: getattr(defaults, field) for field in ExperimentMetadataDefaults.metadata_fields()}
 
 
 def _serialize_video_metadata(meta):
     if meta is None:
-        return None
+        return {}
     result = {}
     for field in VideoMetadata.metadata_fields():
         value = getattr(meta, field)
@@ -671,6 +713,35 @@ def get_experiment_metadata_defaults(user_id, role, experiment_id):
     responses:
         200:
             description: Metadata defaults (null if not set)
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            metadata_defaults:
+                                type: object
+                                nullable: true
+                                properties:
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
         401:
             description: Unauthorized
         404:
@@ -732,6 +803,36 @@ def set_experiment_metadata_defaults(user_id, role, experiment_id):
     responses:
         200:
             description: Metadata defaults set successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+                            metadata_defaults:
+                                type: object
+                                properties:
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
         400:
             description: Bad request
         401:
@@ -823,6 +924,41 @@ def set_video_metadata(user_id, role, experiment_id, video_id):
     responses:
         200:
             description: Video metadata set successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+                            metadata:
+                                type: object
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                                    creation_date:
+                                        type: string
+                                        format: date-time
         400:
             description: Bad request
         401:
