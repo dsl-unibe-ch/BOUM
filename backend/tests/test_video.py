@@ -50,7 +50,7 @@ def test_upload_and_download(client, member_user, experiment):
     )
 
     assert response.status_code == 201
-    assert response.json["msg"] == "Video uploaded"
+    assert "id" in response.json
 
     # video should appear in experiment details
     response = client.get(
