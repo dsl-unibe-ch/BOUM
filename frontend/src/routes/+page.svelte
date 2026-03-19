@@ -6,6 +6,7 @@
 	import { API_BASE_URL } from '$lib/constants';
 	import type { ExperimentDetail } from '$lib/types';
 	import type { PageData } from './$types';
+	import ExperimentPanel from '$lib/components/ExperimentPanel.svelte';
 
 	type DetailState = {
 		loading: boolean;
@@ -20,6 +21,8 @@
 	let createError = $state('');
 	let openItems = $state<string[]>([]);
 	let detailsByExperiment = $state<Record<number, DetailState>>({});
+	let selectedExp = $state<{ id: number; name: string } | null>(null);
+	let panelOpen = $state(false);
 
 	const STATUS_LABELS: Record<number, string> = {
 		0: 'Pending',
@@ -136,7 +139,24 @@
 							<Accordion.ItemTrigger
 								class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-bold"
 							>
-								<span>{exp.name}</span>
+								<span>{exp.name}{exp.start_date ? ` (${exp.start_date})` : ''}</span>
+								<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
+									Upload new Video
+								</a>
+								<button
+									type="button"
+									class="btn preset-filled-primary-500"
+									onclick={() => {
+										if (selectedExp?.id === exp.id) {
+											panelOpen = !panelOpen;
+										} else {
+											selectedExp = exp;
+											panelOpen = true;
+										}
+									}}
+								>
+									edit metadata & defaults
+								</button>
 								<Accordion.ItemIndicator class="group shrink-0">
 									<ChevronDownIcon class="size-5 transition group-data-[state=open]:rotate-180" />
 								</Accordion.ItemIndicator>
@@ -173,10 +193,6 @@
 												</ul>
 											{/if}
 										{/if}
-
-										<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
-											Upload new Video
-										</a>
 									</div>
 								{/if}
 							{/snippet}
@@ -209,4 +225,14 @@
 	{#if createError}
 		<aside class="alert mb-4 preset-filled-error-500"><p>{createError}</p></aside>
 	{/if}
+
+	<ExperimentPanel
+		experimentId={selectedExp?.id ?? null}
+		experimentName={selectedExp?.name ?? ''}
+		open={panelOpen}
+		onOpenChange={(isOpen) => {
+			panelOpen = isOpen;
+			if (!isOpen) selectedExp = null;
+		}}
+	/>
 </div>

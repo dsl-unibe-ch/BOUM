@@ -1,17 +1,17 @@
-export interface ExperimentMetadataDefaults {
-	species: string;
-	cultivar: string;
-	genotype: string;
-	plant_age: string;
-	plant_growth_stage: string;
-	growth_environment: string;
-	pot_volume: number | null;
-	substrate_type: string;
-	special_plant_treatments: string;
-	operator: string;
+export interface MetadataDefaults {
+	species?: string;
+	cultivar?: string;
+	genotype?: string;
+	plant_age?: string;
+	plant_growth_stage?: string;
+	growth_environment?: string;
+	pot_volume?: number | null;
+	substrate_type?: string;
+	special_plant_treatments?: string;
+	operator?: string;
 }
 
-export interface VideoMetadata extends ExperimentMetadataDefaults {
+export interface VideoMetadata extends MetadataDefaults {
 	title: string;
 	creation_date: string;
 }
@@ -44,7 +44,7 @@ export interface ExperimentDetail {
 	start_date: string | null;
 	users: ExperimentUser[];
 	videos: ExperimentVideo[];
-	metadata_defaults: ExperimentMetadataDefaults | null;
+	metadata_defaults: MetadataDefaults | null;
 }
 
 export interface VideoDetail {
@@ -55,7 +55,7 @@ export interface VideoDetail {
 	metadata: VideoMetadata | null;
 }
 
-export function emptyMetadataDefaults(): ExperimentMetadataDefaults {
+export function emptyMetadataDefaults(): MetadataDefaults {
 	return {
 		species: '',
 		cultivar: '',

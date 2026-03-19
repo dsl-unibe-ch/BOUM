@@ -1,12 +1,12 @@
 <script lang="ts">
-	import type { ExperimentMetadataDefaults, VideoMetadata } from '$lib/types';
+	import type { MetadataDefaults, VideoMetadata } from '$lib/types';
 
 	let {
 		metadata = $bindable(),
 		disabled = false,
 		mode = 'video'
 	}: {
-		metadata: ExperimentMetadataDefaults | VideoMetadata;
+		metadata: MetadataDefaults | VideoMetadata;
 		disabled?: boolean;
 		mode?: 'experiment' | 'video';
 	} = $props();
