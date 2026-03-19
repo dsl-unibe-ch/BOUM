@@ -90,7 +90,6 @@
 			saving = false;
 		}
 	}
-
 </script>
 
 <FloatingPanel.Provider value={panel}>
