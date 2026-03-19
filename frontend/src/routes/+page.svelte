@@ -139,7 +139,11 @@
 							<Accordion.ItemTrigger
 								class="flex w-full items-center justify-between gap-3 px-4 py-3 text-left font-bold"
 							>
-								<span>{exp.name}{exp.start_date ? ` (${exp.start_date})` : ''}</span>
+								<span>
+									{exp.name}{exp.start_date
+										? ` (${new Date(exp.start_date).toLocaleDateString()})`
+										: ''}
+								</span>
 								<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
 									Upload new Video
 								</a>
@@ -183,7 +187,7 @@
 															class="flex items-center justify-between gap-3 rounded-base border p-3"
 														>
 															<a href="/video/{exp.id}/{video.id}" class="anchor font-medium">
-																{video.filename || `Video ${video.id}`}
+																{video.metadata?.title || video.filename || `Video ${video.id}`}
 															</a>
 															<span class="text-sm opacity-60">
 																{STATUS_LABELS[video.status] ?? 'Unknown'}
