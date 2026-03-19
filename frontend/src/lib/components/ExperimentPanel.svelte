@@ -5,6 +5,7 @@
 	import { API_BASE_URL } from '$lib/constants';
 	import { type MetadataDefaults, type ExperimentDetail } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
+	import { invalidateAll } from '$app/navigation';
 
 	const METADATA_KEYS: (keyof MetadataDefaults)[] = [
 		'species',
@@ -140,6 +141,9 @@
 				return;
 			}
 			saveMsg = 'Saved successfully.';
+			if (Object.keys(experimentPayload).length > 0) {
+				invalidateAll();
+			}
 		} catch {
 			error = 'Could not reach the server.';
 		} finally {
