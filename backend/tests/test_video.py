@@ -38,7 +38,7 @@ def test_upload_non_member_forbidden(client, non_member_user, experiment):
         data={'file': (io.BytesIO(b"content"), 'test.mkv')},
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_upload_and_download(client, member_user, experiment):
@@ -50,7 +50,7 @@ def test_upload_and_download(client, member_user, experiment):
     )
 
     assert response.status_code == 201
-    assert response.json["msg"] == "Video uploaded"
+    assert "id" in response.json
 
     # video should appear in experiment details
     response = client.get(
@@ -62,9 +62,18 @@ def test_upload_and_download(client, member_user, experiment):
     assert response.json["videos"][0]["filename"] == "test_vid.mkv"
     video_id = response.json["videos"][0]["id"]
 
-    # download the video
+    # get video info (now returns JSON)
     response = client.get(
         f"/api/experiment/{experiment}/videos/{video_id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["filename"] == "test_vid.mkv"
+    assert "download_url" in response.json
+
+    # download the video file
+    response = client.get(
+        f"/api/experiment/{experiment}/videos/{video_id}/download",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200

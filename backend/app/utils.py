@@ -5,6 +5,8 @@ from functools import wraps
 from flask import current_app, request, jsonify
 from pydantic import ValidationError
 from functools import wraps
+from typing import Protocol
+from sqlalchemy import inspect as sa_inspect, Float, DateTime
 
 from app.constants import UserRole
 
@@ -68,3 +70,39 @@ def validate_body(schema):
             return f(*args, **kwargs)
         return wrapper
     return decorator
+
+
+class HasSettableFields(Protocol):
+    def settable_fields(self) -> list[str]: ...
+
+
+def update_from_dict(obj: HasSettableFields, updates: dict) -> None:
+    """Update an object's metadata fields from a dictionary, with type validation."""
+    mapper = sa_inspect(type(obj))
+    value: str | float | datetime.datetime | None = None
+
+    for field in obj.settable_fields():
+        if field not in updates:
+            setattr(obj, field, None)
+            continue
+
+        raw = updates[field]
+        if raw is None or raw == "":
+            setattr(obj, field, None)
+            continue
+
+        match mapper.columns[field].type:  # type: ignore
+            case Float():
+                try:
+                    value = float(raw)
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid value for {field}: must be a number.")
+            case DateTime():
+                try:
+                    value = datetime.datetime.fromisoformat(raw)
+                except (ValueError, TypeError):
+                    raise ValueError(f"Invalid value for {field}: must be an ISO format datetime string.")
+            case _:
+                value = raw
+
+        setattr(obj, field, value)

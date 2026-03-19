@@ -85,14 +85,17 @@ def get_my_info(user_id: int, _role: int):
     responses:
         200:
             description: User information returned successfully
-            schema:
-                properties:
-                    id:
-                        type: integer
-                    username:
-                        type: string
-                    role:
-                        type: integer
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
+                            username:
+                                type: string
+                            role:
+                                type: integer
         401:
             description: Unauthorized (authentication required)
     """
@@ -131,14 +134,17 @@ def get_user_info(_user_id: int, _role: int, target_user_id: int):
     responses:
         200:
             description: User information returned successfully
-            schema:
-                properties:
-                    id:
-                        type: integer
-                    username:
-                        type: string
-                    role:
-                        type: integer
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
+                            username:
+                                type: string
+                            role:
+                                type: integer
         401:
             description: Unauthorized (authentication required)
         403:
@@ -175,17 +181,19 @@ def list_users(_user_id: int, _role: int):
     responses:
         200:
             description: List of users returned successfully
-            schema:
-                type: array
-                items:
-                    type: object
-                    properties:
-                        id:
-                            type: integer
-                        username:
-                            type: string
-                        role:
-                            type: integer
+            content:
+                application/json:
+                    schema:
+                        type: array
+                        items:
+                            type: object
+                            properties:
+                                id:
+                                    type: integer
+                                username:
+                                    type: string
+                                role:
+                                    type: integer
         401:
             description: Unauthorized (authentication required)
         403:
