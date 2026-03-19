@@ -3,7 +3,11 @@
 	import { FloatingPanel, Portal, useFloatingPanel } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
-	import { type ExperimentMetadata, type ExperimentDetail, emptyMetadata } from '$lib/types';
+	import {
+		type ExperimentMetadataDefaults,
+		type ExperimentDetail,
+		emptyMetadataDefaults
+	} from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 
 	let {
@@ -38,7 +42,7 @@
 	let saving = $state(false);
 	let error = $state('');
 	let saveMsg = $state('');
-	let metadata = $state<ExperimentMetadata>(emptyMetadata());
+	let metadata = $state<ExperimentMetadataDefaults>(emptyMetadataDefaults());
 	let loadedId = $state<number | null>(null);
 
 	$effect(() => {
@@ -58,7 +62,7 @@
 				return;
 			}
 			const data: ExperimentDetail = await res.json();
-			metadata = data.metadata ?? emptyMetadata();
+			metadata = data.metadata_defaults ?? emptyMetadataDefaults();
 			loadedId = experimentId;
 		} catch {
 			error = 'Could not reach the server.';
@@ -129,7 +133,7 @@
 
 					{#if loadedId !== null && !loading}
 						<form onsubmit={handleSave} class="space-y-3">
-							<MetadataForm bind:metadata disabled={saving} />
+							<MetadataForm bind:metadata disabled={saving} mode="experiment" />
 
 							{#if saveMsg}
 								<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>
