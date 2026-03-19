@@ -144,26 +144,28 @@
 										? ` (${new Date(exp.start_date).toLocaleDateString()})`
 										: ''}
 								</span>
-								<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
-									Upload new Video
-								</a>
-								<button
-									type="button"
-									class="btn preset-filled-primary-500"
-									onclick={() => {
-										if (selectedExp?.id === exp.id) {
-											panelOpen = !panelOpen;
-										} else {
-											selectedExp = exp;
-											panelOpen = true;
-										}
-									}}
-								>
-									edit metadata & defaults
-								</button>
-								<Accordion.ItemIndicator class="group shrink-0">
-									<ChevronDownIcon class="size-5 transition group-data-[state=open]:rotate-180" />
-								</Accordion.ItemIndicator>
+								<div class="flex shrink-0 items-center gap-2">
+									<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
+										Upload new Video
+									</a>
+									<button
+										type="button"
+										class="btn preset-filled-primary-500"
+										onclick={() => {
+											if (selectedExp?.id === exp.id) {
+												panelOpen = !panelOpen;
+											} else {
+												selectedExp = exp;
+												panelOpen = true;
+											}
+										}}
+									>
+										edit metadata & defaults
+									</button>
+									<Accordion.ItemIndicator class="group">
+										<ChevronDownIcon class="size-5 transition group-data-[state=open]:rotate-180" />
+									</Accordion.ItemIndicator>
+								</div>
 							</Accordion.ItemTrigger>
 						</h2>
 
