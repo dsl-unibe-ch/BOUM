@@ -231,6 +231,15 @@ def test_set_experiment_metadata_pot_volume_null(client, experiment, admin_token
     assert response.json["metadata_defaults"]["pot_volume"] is None
 
 
+def test_set_experiment_metadata_invalid_pot_volume(client, experiment, admin_token):
+    response = client.post(
+        f"/api/experiment/{experiment}/metadata",
+        json={"pot_volume": "not-a-number"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 400
+
+
 def test_set_experiment_metadata_empty_string_becomes_null(client, experiment, admin_token):
     response = client.post(
         f"/api/experiment/{experiment}/metadata",
@@ -401,6 +410,15 @@ def test_set_video_metadata_invalid_date(client, experiment, video_in_experiment
     response = client.post(
         f"/api/experiment/{experiment}/videos/{video_in_experiment}/metadata",
         json={"creation_date": "not-a-date"},
+        headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 400
+
+
+def test_set_video_metadata_invalid_pot_volume(client, experiment, video_in_experiment, admin_token):
+    response = client.post(
+        f"/api/experiment/{experiment}/videos/{video_in_experiment}/metadata",
+        json={"pot_volume": "not-a-number"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 400

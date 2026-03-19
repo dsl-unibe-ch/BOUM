@@ -137,7 +137,7 @@ def analyze_audio(_user_id, _role):
     }
 
     if 'file' not in request.files:
-        return jsonify({"error": "No file provided"}), 400
+        return jsonify({"msg": "No file provided"}), 400
 
     file_storage = request.files['file']
 
@@ -166,11 +166,11 @@ def analyze_audio(_user_id, _role):
 
     except (KeyError, json.JSONDecodeError) as _:
         return jsonify(
-            {"error": "Invalid response from upstream speech service"}
+            {"msg": "Invalid response from upstream speech service"}
         ), 502
 
     except requests.RequestException:
-        return jsonify({"error": f"Upstream connection failed"}), 502
+        return jsonify({"msg": f"Upstream connection failed"}), 502
 
     payload = {
         "model": current_app.config["COMPLETIONS_MODEL"],
@@ -208,8 +208,8 @@ def analyze_audio(_user_id, _role):
 
     except (KeyError, IndexError, json.JSONDecodeError):
         return jsonify(
-            {"error": "Invalid response from upstream completion service"}
+            {"msg": "Invalid response from upstream completion service"}
         ), 502
 
     except requests.RequestException:
-        return jsonify({"error": f"Upstream completion failed"}), 502
+        return jsonify({"msg": f"Upstream completion failed"}), 502

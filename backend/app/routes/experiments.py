@@ -5,7 +5,7 @@ from flask import Blueprint, current_app, request, jsonify, send_from_directory
 
 from datetime import datetime
 
-from app.utils import require_admin, require_authentication
+from app.utils import require_admin, require_authentication, update_from_dict
 from app.models import Experiment, ExperimentMetadataDefaults, User, Video, VideoMetadata
 from app.extensions import db
 from app.constants import UserRole
@@ -47,6 +47,10 @@ def create_experiment(_user_id, _role):
                                 type: integer
                             name:
                                 type: string
+                            start_date:
+                                type: string
+                                format: date-time
+                                nullable: true
         400:
             description: Bad request
         401:
@@ -104,6 +108,10 @@ def list_experiments(_user_id, _role):
                                     type: integer
                                 name:
                                     type: string
+                                start_date:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
                                 user_count:
                                     type: integer
                                 video_count:
@@ -152,6 +160,10 @@ def list_my_experiments(user_id, _role):
                                     type: integer
                                 name:
                                     type: string
+                                start_date:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
                                 video_count:
                                     type: integer
         401:
@@ -202,6 +214,10 @@ def get_experiment(user_id, role, experiment_id):
                                 type: integer
                             name:
                                 type: string
+                            start_date:
+                                type: string
+                                format: date-time
+                                nullable: true
                             users:
                                 type: array
                                 items:
@@ -220,14 +236,16 @@ def get_experiment(user_id, role, experiment_id):
                                             type: integer
                                         filename:
                                             type: string
+                                        path:
+                                            type: string
                                         status:
+                                            type: integer
+                                        experiment_id:
                                             type: integer
                                         metadata:
                                             type: object
-                                            nullable: true
                             metadata_defaults:
                                 type: object
-                                nullable: true
         401:
             description: Unauthorized
         404:
@@ -240,22 +258,7 @@ def get_experiment(user_id, role, experiment_id):
         # non-existent looks the same as forbidden to avoid enumeration
         return jsonify({"msg": "Experiment not found"}), 404
 
-    return jsonify({
-        "id": experiment.id,
-        "name": experiment.name,
-        "start_date": experiment.start_date.isoformat() if experiment.start_date else None,
-        "users": [{"id": u.id, "username": u.username} for u in experiment.users],
-        "videos": [
-            {
-                "id": v.id,
-                "filename": v.filename,
-                "status": v.status,
-                "metadata": _serialize_video_metadata(v.video_metadata),
-            }
-            for v in experiment.videos
-        ],
-        "metadata_defaults": _serialize_metadata_defaults(experiment.metadata_defaults),
-    }), 200
+    return jsonify(experiment.json()), 200
 
 
 @experiment_bp.route('/<int:experiment_id>', methods=['PUT'])
@@ -304,8 +307,7 @@ def update_experiment(user_id, role, experiment_id):
     if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
         return jsonify({"msg": "Experiment not found"}), 404
 
-    body = request.get_json()
-    if not body:
+    if not (body := request.get_json()):
         return jsonify({"msg": "Request body is required"}), 400
 
     if "name" in body:
@@ -515,6 +517,13 @@ def upload_video_to_experiment(user_id, role, experiment_id):
     responses:
         201:
             description: Video uploaded successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
         400:
             description: Bad request
         401:
@@ -647,7 +656,7 @@ def get_video(user_id, role, experiment_id, video_id):
         "filename": video.filename,
         "status": video.status,
         "download_url": f"/api/experiment/{experiment_id}/videos/{video_id}/download",
-        "metadata": _serialize_video_metadata(video.video_metadata),
+        "metadata": video.video_metadata.json() if video.video_metadata else {},
     }), 200
 
 
@@ -762,24 +771,6 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
     return jsonify({"msg": "Video deleted"}), 200
 
 
-def _serialize_metadata_defaults(defaults):
-    if defaults is None:
-        return {}
-    return {field: getattr(defaults, field) for field in ExperimentMetadataDefaults.metadata_fields()}
-
-
-def _serialize_video_metadata(meta):
-    if meta is None:
-        return {}
-    result = {}
-    for field in VideoMetadata.metadata_fields():
-        value = getattr(meta, field)
-        if field == "creation_date" and value is not None:
-            value = value.isoformat()
-        result[field] = value
-    return result
-
-
 @experiment_bp.route('/<int:experiment_id>/metadata', methods=['GET'])
 @require_authentication
 def get_experiment_metadata_defaults(user_id, role, experiment_id):
@@ -840,7 +831,7 @@ def get_experiment_metadata_defaults(user_id, role, experiment_id):
     if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
         return jsonify({"msg": "Experiment not found"}), 404
 
-    return jsonify({"metadata_defaults": _serialize_metadata_defaults(experiment.metadata_defaults)}), 200
+    return jsonify({"metadata_defaults": experiment.metadata_defaults.json() if experiment.metadata_defaults else {}}), 200
 
 
 @experiment_bp.route('/<int:experiment_id>/metadata', methods=['POST'])
@@ -937,21 +928,19 @@ def set_experiment_metadata_defaults(user_id, role, experiment_id):
     if not body:
         return jsonify({"msg": "Request body is required"}), 400
 
-    defaults = experiment.metadata_defaults
-    if defaults is None:
+    if not (defaults := experiment.metadata_defaults):
         defaults = ExperimentMetadataDefaults(experiment_id=experiment_id)
         experiment.metadata_defaults = defaults
 
-    for field in ExperimentMetadataDefaults.metadata_fields():
-        value = body.get(field)
-        if field == "pot_volume":
-            setattr(defaults, field, float(value) if value is not None else None)
-        else:
-            setattr(defaults, field, value or None)
+    try:
+        update_from_dict(defaults, body)
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"msg": str(e)}), 400
 
     db.session.commit()
 
-    return jsonify({"msg": "Metadata defaults updated", "metadata_defaults": _serialize_metadata_defaults(defaults)}), 200
+    return jsonify({"msg": "Metadata defaults updated", "metadata_defaults": defaults.json()}), 200
 
 
 @experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>/metadata', methods=['POST'])
@@ -1067,26 +1056,16 @@ def set_video_metadata(user_id, role, experiment_id, video_id):
     if not body:
         return jsonify({"msg": "Request body is required"}), 400
 
-    meta = video.video_metadata
-    if meta is None:
+    if not (meta := video.video_metadata):
         meta = VideoMetadata(video_id=video_id)
         video.video_metadata = meta
 
-    for field in VideoMetadata.metadata_fields():
-        value = body.get(field)
-        if field == "pot_volume":
-            setattr(meta, field, float(value) if value is not None else None)
-        elif field == "creation_date":
-            if value:
-                try:
-                    setattr(meta, field, datetime.fromisoformat(value))
-                except (ValueError, TypeError):
-                    return jsonify({"msg": "Invalid creation_date format, use ISO 8601"}), 400
-            else:
-                meta.creation_date = None
-        else:
-            setattr(meta, field, value or None)
+    try:
+        update_from_dict(meta, body)
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"msg": str(e)}), 400
 
     db.session.commit()
 
-    return jsonify({"msg": "Video metadata updated", "metadata": _serialize_video_metadata(meta)}), 200
+    return jsonify({"msg": "Video metadata updated", "metadata": meta.json()}), 200

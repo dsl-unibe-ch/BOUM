@@ -43,6 +43,13 @@ class User(Base):
     def verify_password(self, plain_text_password: str) -> bool:
         return checkpw(plain_text_password.encode("utf-8"), self.pw_hash)
 
+    def json(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "role": self.role,
+        }
+
 
 class VideoMetadata(Base):
     __tablename__ = "video_metadata"
@@ -66,9 +73,18 @@ class VideoMetadata(Base):
     video: Mapped["Video"] = relationship(back_populates="video_metadata")
 
     @classmethod
-    def metadata_fields(cls):
-        skip = {"id", "video_id"}
+    def settable_fields(cls):
+        skip = {"id", "video_id", "video"}
         return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        result = {}
+        for field in self.settable_fields():
+            value = getattr(self, field)
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            result[field] = value
+        return result
 
 
 class ExperimentMetadataDefaults(Base):
@@ -91,9 +107,12 @@ class ExperimentMetadataDefaults(Base):
     experiment: Mapped["Experiment"] = relationship(back_populates="metadata_defaults")
 
     @classmethod
-    def metadata_fields(cls):
-        skip = {"id", "experiment_id"}
+    def settable_fields(cls):
+        skip = {"id", "experiment_id", "experiment"}
         return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        return {field: getattr(self, field) for field in self.settable_fields()}
 
 
 class Video(Base):
@@ -117,13 +136,24 @@ class Video(Base):
     def __init__(self, filename: str, path: str, experiment_id: int):
         super().__init__(filename=filename, path=path, experiment_id=experiment_id)
 
-    def apply_experiment_defaults(self, defaults: "ExperimentMetadataDefaults") -> None:
+    def apply_experiment_defaults(self, defaults: ExperimentMetadataDefaults) -> None:
         """Populate metadata from experiment defaults, without overwriting existing values."""
+
         if self.video_metadata is None:
             self.video_metadata = VideoMetadata(video_id=self.id)
-        for field in ExperimentMetadataDefaults.metadata_fields():
+        for field in ExperimentMetadataDefaults.settable_fields():
             if getattr(self.video_metadata, field) is None:
                 setattr(self.video_metadata, field, getattr(defaults, field))
+
+    def json(self):
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "path": self.path,
+            "status": self.status,
+            "experiment_id": self.experiment_id,
+            "metadata": self.video_metadata.json() if self.video_metadata else {},
+        }
 
 
 class Experiment(Base):
@@ -148,3 +178,18 @@ class Experiment(Base):
 
     def is_user_participant(self, user_id: int) -> bool:
         return any(user.id == user_id for user in self.users)
+
+    @classmethod
+    def settable_fields(cls):
+        skip = {"id", "videos", "users", "metadata_defaults"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "users": [{"id": user.id, "username": user.username} for user in self.users],
+            "metadata_defaults": self.metadata_defaults.json() if self.metadata_defaults else {},
+            "videos": [video.json() for video in self.videos],
+        }
