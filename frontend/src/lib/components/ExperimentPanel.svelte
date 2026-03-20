@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { GripVerticalIcon, XIcon, MinusIcon, MaximizeIcon, MinimizeIcon } from '@lucide/svelte';
-	import { FloatingPanel, Portal, useFloatingPanel } from '@skeletonlabs/skeleton-svelte';
+	import { XIcon } from '@lucide/svelte';
+	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
 	import { type MetadataDefaults, type ExperimentDetail } from '$lib/types';
@@ -32,21 +32,9 @@
 		onOpenChange: (open: boolean) => void;
 	} = $props();
 
-	const id = $props.id();
-	const panel = useFloatingPanel({
-		id,
-		onOpenChange: (details) => onOpenChange(details.open),
-		minSize: { width: 300, height: 200 },
-		defaultSize: { width: 500, height: 500 }
-	});
-
-	// Sync external `open` prop to zag-js via setOpen() to avoid batch crashes
-	$effect(() => {
-		const api = panel();
-		if (open !== api.open) {
-			api.setOpen(open);
-		}
-	});
+	function handleOpenChange(details: { open: boolean }) {
+		onOpenChange(details.open);
+	}
 
 	let loading = $state(false);
 	let saving = $state(false);
@@ -181,92 +169,79 @@
 	}
 </script>
 
-<FloatingPanel.Provider value={panel}>
+<Dialog {open} onOpenChange={handleOpenChange}>
 	<Portal>
-		<FloatingPanel.Positioner class="z-50">
-			<FloatingPanel.Content class="flex flex-col">
-				<FloatingPanel.DragTrigger>
-					<FloatingPanel.Header>
-						<FloatingPanel.Title>
-							<GripVerticalIcon class="size-4" />
-							{experimentName}
-						</FloatingPanel.Title>
-						<FloatingPanel.Control>
-							<FloatingPanel.StageTrigger stage="minimized">
-								<MinusIcon class="size-4" />
-							</FloatingPanel.StageTrigger>
-							<FloatingPanel.StageTrigger stage="maximized">
-								<MaximizeIcon class="size-4" />
-							</FloatingPanel.StageTrigger>
-							<FloatingPanel.StageTrigger stage="default">
-								<MinimizeIcon class="size-4" />
-							</FloatingPanel.StageTrigger>
-							<FloatingPanel.CloseTrigger>
-								<XIcon class="size-4" />
-							</FloatingPanel.CloseTrigger>
-						</FloatingPanel.Control>
-					</FloatingPanel.Header>
-				</FloatingPanel.DragTrigger>
-				<FloatingPanel.Body class="max-h-full min-h-0 flex-1 px-4 pt-4">
-					{#if loading}
-						<div class="flex items-center justify-center py-8">
-							<p class="text-sm opacity-60">Loading...</p>
-						</div>
-					{:else if error}
-						<aside class="alert mb-4 preset-filled-error-500"><p>{error}</p></aside>
-					{/if}
+		<Dialog.Backdrop class="fixed inset-0 z-50 bg-surface-50-950/50" />
+		<Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<Dialog.Content
+				class="flex max-h-[80vh] w-full max-w-xl flex-col space-y-4 card bg-surface-100-900 p-4 shadow-xl"
+			>
+				<header class="flex items-center justify-between">
+					<Dialog.Title class="text-lg font-bold">{experimentName}</Dialog.Title>
+					<Dialog.CloseTrigger class="btn-icon hover:preset-tonal">
+						<XIcon class="size-4" />
+					</Dialog.CloseTrigger>
+				</header>
 
-					{#if loadedId !== null && !loading}
-						<form onsubmit={handleSave} class="flex max-h-full flex-col space-y-3">
-							<div class="w-full overflow-y-auto">
-								<label class="label">
-									<span class="label-text text-sm">Experiment Name</span>
-									<input
-										class="input"
-										type="text"
-										bind:value={name}
-										placeholder="Experiment Name"
-										disabled={saving}
-									/>
-								</label>
-								<label class="label">
-									<span class="label-text text-sm">Start Date</span>
-									<input
-										class="input"
-										type="datetime-local"
-										bind:value={startDate}
-										disabled={saving}
-									/>
-								</label>
+				{#if loading}
+					<div class="flex items-center justify-center py-8">
+						<p class="text-sm opacity-60">Loading...</p>
+					</div>
+				{:else if error}
+					<aside class="alert mb-4 preset-filled-error-500"><p>{error}</p></aside>
+				{/if}
 
-								<hr class="hr" />
-								<h2 class="h4 font-bold">Plant Default Metadata</h2>
-								<MetadataForm bind:metadata disabled={saving} mode="experiment" />
-								<button
-									type="button"
-									class="mt-3 btn preset-filled-error-500"
-									onclick={deleteExperiment}
+				{#if loadedId !== null && !loading}
+					<form onsubmit={handleSave} class="flex min-h-0 flex-col space-y-3">
+						<div class="max-h-full min-h-0 overflow-y-auto">
+							<label class="label">
+								<span class="label-text text-sm">Experiment Name</span>
+								<input
+									class="input"
+									type="text"
+									bind:value={name}
+									placeholder="Experiment Name"
 									disabled={saving}
-								>
-									Delete Experiment
-								</button>
-							</div>
-							{#if saveMsg}
-								<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>
-							{/if}
+								/>
+							</label>
+							<label class="label">
+								<span class="label-text text-sm">Start Date</span>
+								<input
+									class="input"
+									type="datetime-local"
+									bind:value={startDate}
+									disabled={saving}
+								/>
+							</label>
 
-							<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
-								{#if saving}
-									Saving...
-								{:else}
-									Save
-								{/if}
+							<hr class="hr" />
+							<h2 class="h4 font-bold">Plant Default Metadata</h2>
+							<MetadataForm bind:metadata disabled={saving} mode="experiment" />
+							<button
+								type="button"
+								class="mt-3 btn preset-filled-error-500"
+								onclick={deleteExperiment}
+								disabled={saving}
+							>
+								Delete Experiment
 							</button>
-						</form>
-					{/if}
-				</FloatingPanel.Body>
-				<FloatingPanel.ResizeTrigger axis="se" />
-			</FloatingPanel.Content>
-		</FloatingPanel.Positioner>
+
+							{#if saveMsg}
+								<aside class="alert preset-filled-surface-500 text-sm">
+									<p>{saveMsg}</p>
+								</aside>
+							{/if}
+						</div>
+						<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
+							{#if saving}
+								Saving...
+							{:else}
+								Save
+							{/if}
+						</button>
+					</form>
+				{/if}
+			</Dialog.Content>
+		</Dialog.Positioner>
 	</Portal>
-</FloatingPanel.Provider>
+</Dialog>
