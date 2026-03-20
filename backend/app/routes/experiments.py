@@ -3,8 +3,10 @@ import os
 
 from flask import Blueprint, current_app, request, jsonify, send_from_directory
 
-from app.utils import require_admin, require_authentication
-from app.models import Experiment, User, Video
+from datetime import datetime
+
+from app.utils import require_admin, require_authentication, update_from_dict
+from app.models import Experiment, ExperimentMetadataDefaults, User, Video, VideoMetadata
 from app.extensions import db
 from app.constants import UserRole
 
@@ -15,7 +17,7 @@ experiment_bp = Blueprint('experiment', __name__)
 @require_authentication
 def create_experiment(_user_id, _role):
     """
-    Create a new experiment.
+    Create a new experiment (all authenticated users).
 
     ---
     tags:
@@ -45,12 +47,14 @@ def create_experiment(_user_id, _role):
                                 type: integer
                             name:
                                 type: string
+                            start_date:
+                                type: string
+                                format: date-time
+                                nullable: true
         400:
             description: Bad request
         401:
             description: Unauthorized
-        403:
-            description: Forbidden (admin only)
     """
     body = request.get_json()
     if not body or not body.get("name"):
@@ -58,13 +62,24 @@ def create_experiment(_user_id, _role):
 
     if not (user := db.session.get(User, _user_id)):
         return jsonify({"msg": "User not found, bad auth state"}), 500
-    
-    experiment = Experiment(name=body["name"], users=[user])
+
+    start_date = None
+    if body.get("start_date"):
+        try:
+            start_date = datetime.fromisoformat(body["start_date"])
+        except (ValueError, TypeError):
+            return jsonify({"msg": "Invalid start_date format, use ISO 8601"}), 400
+
+    experiment = Experiment(name=body["name"], users=[user], start_date=start_date)
 
     db.session.add(experiment)
     db.session.commit()
 
-    return jsonify({"id": experiment.id, "name": experiment.name}), 201
+    return jsonify({
+        "id": experiment.id,
+        "name": experiment.name,
+        "start_date": experiment.start_date.isoformat() if experiment.start_date else None,
+    }), 201
 
 
 @experiment_bp.route('/', methods=['GET'])
@@ -93,6 +108,10 @@ def list_experiments(_user_id, _role):
                                     type: integer
                                 name:
                                     type: string
+                                start_date:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
                                 user_count:
                                     type: integer
                                 video_count:
@@ -108,6 +127,7 @@ def list_experiments(_user_id, _role):
         {
             "id": e.id,
             "name": e.name,
+            "start_date": e.start_date.isoformat() if e.start_date else None,
             "user_count": len(e.users),
             "video_count": len(e.videos),
         }
@@ -140,6 +160,10 @@ def list_my_experiments(user_id, _role):
                                     type: integer
                                 name:
                                     type: string
+                                start_date:
+                                    type: string
+                                    format: date-time
+                                    nullable: true
                                 video_count:
                                     type: integer
         401:
@@ -154,6 +178,7 @@ def list_my_experiments(user_id, _role):
         {
             "id": e.id,
             "name": e.name,
+            "start_date": e.start_date.isoformat() if e.start_date else None,
             "video_count": len(e.videos),
         }
         for e in experiments
@@ -189,6 +214,10 @@ def get_experiment(user_id, role, experiment_id):
                                 type: integer
                             name:
                                 type: string
+                            start_date:
+                                type: string
+                                format: date-time
+                                nullable: true
                             users:
                                 type: array
                                 items:
@@ -207,8 +236,16 @@ def get_experiment(user_id, role, experiment_id):
                                             type: integer
                                         filename:
                                             type: string
+                                        path:
+                                            type: string
                                         status:
                                             type: integer
+                                        experiment_id:
+                                            type: integer
+                                        metadata:
+                                            type: object
+                            metadata_defaults:
+                                type: object
         401:
             description: Unauthorized
         404:
@@ -221,14 +258,78 @@ def get_experiment(user_id, role, experiment_id):
         # non-existent looks the same as forbidden to avoid enumeration
         return jsonify({"msg": "Experiment not found"}), 404
 
+    return jsonify(experiment.json()), 200
+
+
+@experiment_bp.route('/<int:experiment_id>', methods=['PUT'])
+@require_authentication
+def update_experiment(user_id, role, experiment_id):
+    """
+    Update an experiment's name and/or start_date (admin or participant).
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        name:
+                            type: string
+                        start_date:
+                            type: string
+                            format: date-time
+                            nullable: true
+    responses:
+        200:
+            description: Experiment updated successfully
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment not found or not accessible
+    """
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if not (body := request.get_json()):
+        return jsonify({"msg": "Request body is required"}), 400
+
+    if "name" in body:
+        if not body["name"]:
+            return jsonify({"msg": "name cannot be empty"}), 400
+        experiment.name = body["name"]
+
+    if "start_date" in body:
+        if body["start_date"] is None:
+            experiment.start_date = None
+        else:
+            try:
+                experiment.start_date = datetime.fromisoformat(body["start_date"])
+            except (ValueError, TypeError):
+                return jsonify({"msg": "Invalid start_date format, use ISO 8601"}), 400
+
+    db.session.commit()
+
     return jsonify({
         "id": experiment.id,
         "name": experiment.name,
-        "users": [{"id": u.id, "username": u.username} for u in experiment.users],
-        "videos": [
-            {"id": v.id, "filename": v.filename, "status": v.status}
-            for v in experiment.videos
-        ],
+        "start_date": experiment.start_date.isoformat() if experiment.start_date else None,
     }), 200
 
 
@@ -254,10 +355,8 @@ def delete_experiment(user_id, role, experiment_id):
             description: Experiment deleted successfully
         401:
             description: Unauthorized
-        403:
-            description: Forbidden (admin or participant)
         404:
-            description: Experiment not found
+            description: Experiment not found or not accessible
     """
 
     if not (experiment := db.session.get(Experiment, experiment_id)):
@@ -308,8 +407,6 @@ def add_user_to_experiment(_user_id, role, experiment_id):
             description: Bad request
         401:
             description: Unauthorized
-        403:
-            description: Forbidden (admin only)
         404:
             description: Experiment or user not found
         409:
@@ -420,20 +517,25 @@ def upload_video_to_experiment(user_id, role, experiment_id):
     responses:
         201:
             description: Video uploaded successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
         400:
             description: Bad request
         401:
             description: Unauthorized
-        403:
-            description: Not a member of the experiment
         404:
-            description: Experiment not found
+            description: Experiment not found or user not a member
     """
     if not (experiment := db.session.get(Experiment, experiment_id)):
         return jsonify({"msg": "Experiment not found"}), 404
 
     if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
-        return jsonify({"msg": "Forbidden"}), 403
+        return jsonify({"msg": "Experiment not found or user not a member"}), 404
 
     if "file" not in request.files:
         return jsonify({"msg": "No file part"}), 400
@@ -464,10 +566,101 @@ def upload_video_to_experiment(user_id, role, experiment_id):
 
     db.session.commit()
 
-    return jsonify({"msg": "Video uploaded"}), 201
+    return jsonify({"id": new_video.id}), 201
 
 
 @experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>', methods=['GET'])
+@require_authentication
+def get_video(user_id, role, experiment_id, video_id):
+    """
+    Get video details and metadata.
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+        - name: video_id
+          in: path
+          schema:
+              type: integer
+          required: true
+    responses:
+        200:
+            description: Video details with metadata
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            id:
+                                type: integer
+                            filename:
+                                type: string
+                            status:
+                                type: integer
+                            download_url:
+                                type: string
+                            metadata:
+                                type: object
+                                nullable: true
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                                    creation_date:
+                                        type: string
+                                        format: date-time
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment or video not found
+    """
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    video = db.session.get(Video, video_id)
+    if not video or video.experiment_id != experiment_id:
+        return jsonify({"msg": "Video not found in experiment"}), 404
+
+    return jsonify({
+        "id": video.id,
+        "filename": video.filename,
+        "status": video.status,
+        "download_url": f"/api/experiment/{experiment_id}/videos/{video_id}/download",
+        "metadata": video.video_metadata.json() if video.video_metadata else {},
+    }), 200
+
+
+@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>/download', methods=['GET'])
 @require_authentication
 def download_video(user_id, role, experiment_id, video_id):
     """
@@ -481,14 +674,14 @@ def download_video(user_id, role, experiment_id, video_id):
     parameters:
         - name: experiment_id
           in: path
-          type: integer
+          schema:
+              type: integer
           required: true
-          description: The ID of the experiment
         - name: video_id
           in: path
-          type: integer
+          schema:
+              type: integer
           required: true
-          description: The ID of the video to download
     responses:
         200:
             description: Video file returned successfully
@@ -554,10 +747,8 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
             description: Video deleted successfully
         401:
             description: Unauthorized
-        403:
-            description: Not a member of the experiment
         404:
-            description: Experiment or video not found in experiment
+            description: Experiment or video not found
     """
     if not (experiment := db.session.get(Experiment, experiment_id)):
         return jsonify({"msg": "Experiment not found"}), 404
@@ -578,3 +769,303 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
     db.session.commit()
 
     return jsonify({"msg": "Video deleted"}), 200
+
+
+@experiment_bp.route('/<int:experiment_id>/metadata', methods=['GET'])
+@require_authentication
+def get_experiment_metadata_defaults(user_id, role, experiment_id):
+    """
+    Get default metadata for an experiment (admin or participant).
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+    responses:
+        200:
+            description: Metadata defaults (null if not set)
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            metadata_defaults:
+                                type: object
+                                nullable: true
+                                properties:
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment not found
+    """
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    return jsonify({"metadata_defaults": experiment.metadata_defaults.json() if experiment.metadata_defaults else {}}), 200
+
+
+@experiment_bp.route('/<int:experiment_id>/metadata', methods=['POST'])
+@require_authentication
+def set_experiment_metadata_defaults(user_id, role, experiment_id):
+    """
+    Set default metadata for an experiment (admin or participant).
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        species:
+                            type: string
+                        cultivar:
+                            type: string
+                        genotype:
+                            type: string
+                        plant_age:
+                            type: string
+                        plant_growth_stage:
+                            type: string
+                        growth_environment:
+                            type: string
+                        pot_volume:
+                            type: number
+                        substrate_type:
+                            type: string
+                        special_plant_treatments:
+                            type: string
+                        operator:
+                            type: string
+    responses:
+        200:
+            description: Metadata defaults set successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+                            metadata_defaults:
+                                type: object
+                                properties:
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment not found
+    """
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    body = request.get_json()
+    if not body:
+        return jsonify({"msg": "Request body is required"}), 400
+
+    if not (defaults := experiment.metadata_defaults):
+        defaults = ExperimentMetadataDefaults(experiment_id=experiment_id)
+        experiment.metadata_defaults = defaults
+
+    try:
+        update_from_dict(defaults, body)
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"msg": str(e)}), 400
+
+    db.session.commit()
+
+    return jsonify({"msg": "Metadata defaults updated", "metadata_defaults": defaults.json()}), 200
+
+
+@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>/metadata', methods=['POST'])
+@require_authentication
+def set_video_metadata(user_id, role, experiment_id, video_id):
+    """
+    Set metadata for a video in an experiment (admin or participant).
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+        - name: video_id
+          in: path
+          schema:
+              type: integer
+          required: true
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        title:
+                            type: string
+                        species:
+                            type: string
+                        cultivar:
+                            type: string
+                        genotype:
+                            type: string
+                        plant_age:
+                            type: string
+                        plant_growth_stage:
+                            type: string
+                        growth_environment:
+                            type: string
+                        pot_volume:
+                            type: number
+                        substrate_type:
+                            type: string
+                        special_plant_treatments:
+                            type: string
+                        operator:
+                            type: string
+                        creation_date:
+                            type: string
+                            format: date-time
+    responses:
+        200:
+            description: Video metadata set successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+                            metadata:
+                                type: object
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                                    creation_date:
+                                        type: string
+                                        format: date-time
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment or video not found
+    """
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    video = db.session.get(Video, video_id)
+    if not video or video.experiment_id != experiment_id:
+        return jsonify({"msg": "Video not found in experiment"}), 404
+
+    body = request.get_json()
+    if not body:
+        return jsonify({"msg": "Request body is required"}), 400
+
+    if not (meta := video.video_metadata):
+        meta = VideoMetadata(video_id=video_id)
+        video.video_metadata = meta
+
+    try:
+        update_from_dict(meta, body)
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({"msg": str(e)}), 400
+
+    db.session.commit()
+
+    return jsonify({"msg": "Video metadata updated", "metadata": meta.json()}), 200

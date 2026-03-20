@@ -13,7 +13,7 @@ from app.config import Config
 from app.constants import SWAGGER_CONFIG, SWAGGER_TEMPLATE
 
 def setup_db(app: Flask):
-    from app.models import User, UserRole, Video, Experiment
+    from app.models import User, UserRole, Video, Experiment, VideoMetadata, ExperimentMetadataDefaults
 
     with app.app_context():
         print(f"Registered tables: {db.metadata.tables.keys()}")

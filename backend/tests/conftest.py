@@ -17,11 +17,11 @@ def jwt_secret_key():
     return Config.JWT_SECRET_KEY
 
 @pytest.fixture
-def app():
+def app(monkeypatch):
+    monkeypatch.setattr(Config, "SQLALCHEMY_DATABASE_URI", "sqlite:///:memory:")
     app = create_app()
     app.config.update({
         "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
         "SQLALCHEMY_ENGINE_OPTIONS": {"poolclass": StaticPool}
     })
 
@@ -48,7 +48,7 @@ def admin_token(client, app):
         return create_jwt(user_id=1, role=UserRole.ADMIN)
 
 @pytest.fixture
-def user_token(_client, app):
+def user_token(client, app):
     from app.utils import create_jwt
     with app.app_context():
         return create_jwt(user_id=1, role=UserRole.USER)

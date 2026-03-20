@@ -14,7 +14,7 @@ def test_create_experiment_non_admin(client, non_member_user):
         json={"name": "X"},
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 201
 
 
 def test_create_experiment_missing_name(client, admin_token):
@@ -130,7 +130,7 @@ def test_delete_experiment_non_admin(client, experiment, non_member_user):
         f"/api/experiment/{experiment}",
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_delete_experiment_success(client, experiment, admin_token):
@@ -164,7 +164,7 @@ def test_add_user_non_admin(client, experiment, non_member_user):
         json={"user_id": user_id},
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_add_user_missing_body(client, experiment, admin_token):
@@ -271,7 +271,7 @@ def test_upload_video_non_member(client, experiment, non_member_user):
         data={'file': (io.BytesIO(b"content"), 'test.mkv')},
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_upload_video_any_member(client, experiment, admin_token):
@@ -325,7 +325,7 @@ def test_remove_video_non_member(client, experiment, video_in_experiment, non_me
         f"/api/experiment/{experiment}/videos/{video_in_experiment}",
         headers={"Authorization": f"Bearer {token}"}
     )
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_remove_video_member(client, experiment, member_user, video_in_experiment):

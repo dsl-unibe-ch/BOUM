@@ -1,6 +1,7 @@
 from typing import Optional
+from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, String, LargeBinary, Table
+from sqlalchemy import Column, ForeignKey, Integer, String, LargeBinary, Table, Float, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from bcrypt import hashpw, gensalt, checkpw
 from app.extensions import Base
@@ -28,9 +29,7 @@ class User(Base):
     )
 
     def __init__(self, username: str, pw: str, role: UserRole = UserRole.USER):
-        username = username
         pw_hash = hashpw(pw.encode("utf-8"), gensalt())
-
         super().__init__(username=username, pw_hash=pw_hash, role=role)
 
     @property
@@ -44,6 +43,77 @@ class User(Base):
     def verify_password(self, plain_text_password: str) -> bool:
         return checkpw(plain_text_password.encode("utf-8"), self.pw_hash)
 
+    def json(self):
+        return {
+            "id": self.id,
+            "username": self.username,
+            "role": self.role,
+        }
+
+
+class VideoMetadata(Base):
+    __tablename__ = "video_metadata"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    video_id: Mapped[int] = mapped_column(ForeignKey("videos.id"), unique=True, nullable=False)
+
+    title: Mapped[Optional[str]] = mapped_column(String(200))
+    species: Mapped[Optional[str]] = mapped_column(String(100))
+    cultivar: Mapped[Optional[str]] = mapped_column(String(100))
+    genotype: Mapped[Optional[str]] = mapped_column(String(100))
+    plant_age: Mapped[Optional[str]] = mapped_column(String(50))
+    plant_growth_stage: Mapped[Optional[str]] = mapped_column(String(100))
+    growth_environment: Mapped[Optional[str]] = mapped_column(String(100))
+    pot_volume: Mapped[Optional[float]] = mapped_column(Float)
+    substrate_type: Mapped[Optional[str]] = mapped_column(String(100))
+    special_plant_treatments: Mapped[Optional[str]] = mapped_column(String(500))
+    operator: Mapped[Optional[str]] = mapped_column(String(100))
+    creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+    video: Mapped["Video"] = relationship(back_populates="video_metadata")
+
+    @classmethod
+    def settable_fields(cls):
+        skip = {"id", "video_id", "video"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        result = {}
+        for field in self.settable_fields():
+            value = getattr(self, field)
+            if isinstance(value, datetime):
+                value = value.isoformat()
+            result[field] = value
+        return result
+
+
+class ExperimentMetadataDefaults(Base):
+    __tablename__ = "experiment_metadata_defaults"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    experiment_id: Mapped[int] = mapped_column(ForeignKey("experiments.id"), unique=True, nullable=False)
+
+    species: Mapped[Optional[str]] = mapped_column(String(100))
+    cultivar: Mapped[Optional[str]] = mapped_column(String(100))
+    genotype: Mapped[Optional[str]] = mapped_column(String(100))
+    plant_age: Mapped[Optional[str]] = mapped_column(String(50))
+    plant_growth_stage: Mapped[Optional[str]] = mapped_column(String(100))
+    growth_environment: Mapped[Optional[str]] = mapped_column(String(100))
+    pot_volume: Mapped[Optional[float]] = mapped_column(Float)
+    substrate_type: Mapped[Optional[str]] = mapped_column(String(100))
+    special_plant_treatments: Mapped[Optional[str]] = mapped_column(String(500))
+    operator: Mapped[Optional[str]] = mapped_column(String(100))
+
+    experiment: Mapped["Experiment"] = relationship(back_populates="metadata_defaults")
+
+    @classmethod
+    def settable_fields(cls):
+        skip = {"id", "experiment_id", "experiment"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        return {field: getattr(self, field) for field in self.settable_fields()}
+
 
 class Video(Base):
     __tablename__ = "videos"
@@ -53,16 +123,37 @@ class Video(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     filename: Mapped[str] = mapped_column(String(MAX_VIDEO_NAME_LEN), nullable=False)
     path: Mapped[str] = mapped_column(String(200), nullable=False)
-
     status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
 
     experiment_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("experiments.id"), nullable=True
     )
     experiment: Mapped[Optional["Experiment"]] = relationship(back_populates="videos")
+    video_metadata: Mapped[Optional["VideoMetadata"]] = relationship(
+        back_populates="video", uselist=False, cascade="all, delete-orphan"
+    )
 
     def __init__(self, filename: str, path: str, experiment_id: int):
         super().__init__(filename=filename, path=path, experiment_id=experiment_id)
+
+    def apply_experiment_defaults(self, defaults: ExperimentMetadataDefaults) -> None:
+        """Populate metadata from experiment defaults, without overwriting existing values."""
+
+        if self.video_metadata is None:
+            self.video_metadata = VideoMetadata(video_id=self.id)
+        for field in ExperimentMetadataDefaults.settable_fields():
+            if getattr(self.video_metadata, field) is None:
+                setattr(self.video_metadata, field, getattr(defaults, field))
+
+    def json(self):
+        return {
+            "id": self.id,
+            "filename": self.filename,
+            "path": self.path,
+            "status": self.status,
+            "experiment_id": self.experiment_id,
+            "metadata": self.video_metadata.json() if self.video_metadata else {},
+        }
 
 
 class Experiment(Base):
@@ -70,6 +161,7 @@ class Experiment(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
+    start_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
     videos: Mapped[list["Video"]] = relationship(
         back_populates="experiment", foreign_keys="[Video.experiment_id]"
@@ -77,9 +169,27 @@ class Experiment(Base):
     users: Mapped[list["User"]] = relationship(
         secondary=experiment_users, back_populates="experiments"
     )
+    metadata_defaults: Mapped[Optional["ExperimentMetadataDefaults"]] = relationship(
+        back_populates="experiment", uselist=False, cascade="all, delete-orphan"
+    )
 
-    def __init__(self, name: str, users: list[User] | None = None):
-        super().__init__(name=name, users=users or [])
+    def __init__(self, name: str, users: list[User] | None = None, start_date: datetime | None = None):
+        super().__init__(name=name, users=users or [], start_date=start_date)
 
     def is_user_participant(self, user_id: int) -> bool:
         return any(user.id == user_id for user in self.users)
+
+    @classmethod
+    def settable_fields(cls):
+        skip = {"id", "videos", "users", "metadata_defaults"}
+        return [c.key for c in cls.__table__.columns if c.key not in skip]
+
+    def json(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "start_date": self.start_date.isoformat() if self.start_date else None,
+            "users": [{"id": user.id, "username": user.username} for user in self.users],
+            "metadata_defaults": self.metadata_defaults.json() if self.metadata_defaults else {},
+            "videos": [video.json() for video in self.videos],
+        }
