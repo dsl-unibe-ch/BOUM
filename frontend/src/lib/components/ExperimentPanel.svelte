@@ -150,6 +150,35 @@
 			saving = false;
 		}
 	}
+
+	async function deleteExperiment() {
+		if (
+			!confirm('Are you sure you want to delete this experiment? This action cannot be undone.')
+		) {
+			return;
+		}
+
+		saving = true;
+		error = '';
+		try {
+			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}`, {
+				method: 'DELETE'
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				error = body?.msg ?? 'Failed to delete experiment.';
+				return;
+			}
+
+			onOpenChange(false);
+			invalidateAll();
+		} catch {
+			error = 'Could not reach the server.';
+		} finally {
+			saving = false;
+		}
+	}
 </script>
 
 <FloatingPanel.Provider value={panel}>
@@ -213,6 +242,14 @@
 								<hr class="hr" />
 								<h2 class="h4 font-bold">Plant Default Metadata</h2>
 								<MetadataForm bind:metadata disabled={saving} mode="experiment" />
+								<button
+									type="button"
+									class="mt-3 btn preset-filled-error-500"
+									onclick={deleteExperiment}
+									disabled={saving}
+								>
+									Delete Experiment
+								</button>
 							</div>
 							{#if saveMsg}
 								<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>

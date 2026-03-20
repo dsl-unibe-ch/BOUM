@@ -9,5 +9,6 @@
 !tests/*
 !run.py
 !.gitignore
+!README.md
 **/*.pyc
 **/__pycache__

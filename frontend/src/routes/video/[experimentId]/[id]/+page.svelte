@@ -105,6 +105,36 @@
 			saving = false;
 		}
 	}
+
+	async function deleteVideo() {
+		if (!data.video) return;
+		if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+			return;
+		}
+
+		saving = true;
+		error = '';
+		try {
+			const res = await authFetch(
+				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}`,
+				{
+					method: 'DELETE'
+				}
+			);
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				error = body?.msg ?? 'Failed to delete video.';
+				return;
+			}
+
+			await goto('/');
+		} catch {
+			error = 'Could not reach the server.';
+		} finally {
+			saving = false;
+		}
+	}
 </script>
 
 <div class="mx-auto max-w-2xl p-4">
@@ -161,6 +191,15 @@
 			{#if saveMsg}
 				<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>
 			{/if}
+
+			<button
+				type="button"
+				class="mt-3 btn preset-filled-error-500"
+				onclick={deleteVideo}
+				disabled={saving}
+			>
+				Delete Video
+			</button>
 
 			<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
 				{#if saving}
