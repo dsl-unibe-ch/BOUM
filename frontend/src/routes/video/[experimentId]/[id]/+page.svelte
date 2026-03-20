@@ -6,6 +6,8 @@
 	import { type VideoMetadata, emptyVideoMetadata } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 	import PointCloudViewer from '$lib/components/PointCloudViewer.svelte';
+	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
+	import { CirclePlay } from '@lucide/svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -14,7 +16,11 @@
 	let saving = $state(false);
 	let error = $state('');
 	let saveMsg = $state('');
+	let playerOpen = $state(false);
 
+	const isPlayable = $derived(
+		data.video != null && data.video.status >= 1 && data.video.status <= 4
+	);
 	const STATUS_LABELS: Record<number, string> = {
 		0: 'Pending',
 		1: 'Seen',
@@ -167,7 +173,26 @@
 	{:else if data.error}
 		<aside class="alert preset-filled-error-500"><p>{data.error}</p></aside>
 	{:else if data.video}
-		<h1 class="mb-4 h2 font-bold">{data.video.metadata?.title ?? data.video.filename}</h1>
+		<div class="mb-4 flex items-center gap-3">
+			<h1 class="h2 font-bold">{data.video.metadata?.title ?? data.video.filename}</h1>
+			{#if isPlayable}
+				<button
+					class="hover:text-primary-500"
+					onclick={() => (playerOpen = true)}
+					aria-label="Play video"
+				>
+					<CirclePlay size={30} />
+				</button>
+			{/if}
+		</div>
+
+		{#if isPlayable}
+			<VideoPlayer
+				experimentId={data.experimentId}
+				videoId={data.video.id}
+				bind:open={playerOpen}
+			/>
+		{/if}
 
 		<div class="mb-4 card preset-outlined-surface-200-800 p-4">
 			<p><strong>Status:</strong> {STATUS_LABELS[data.video.status] ?? 'Unknown'}</p>
