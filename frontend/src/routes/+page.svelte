@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
-	import { ChevronDownIcon } from '@lucide/svelte';
+	import { ChevronDownIcon, SquarePlusIcon, Pencil } from '@lucide/svelte';
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
@@ -144,13 +144,14 @@
 										? ` (${new Date(exp.start_date).toLocaleDateString()})`
 										: ''}
 								</span>
-								<div class="flex shrink-0 items-center gap-2">
-									<a href="/video/{exp.id}/new" class="btn preset-filled-primary-500">
-										Upload new Video
+								<div class="flex shrink-0 items-center gap-4">
+									<a href="/video/{exp.id}/new" class="btn-icon preset-filled-primary-500">
+										<SquarePlusIcon size={20} />
+										<span class="sr-only">Upload new Video</span>
 									</a>
 									<button
 										type="button"
-										class="btn preset-filled-primary-500"
+										class="btn-icon preset-filled-primary-500"
 										onclick={() => {
 											if (selectedExp?.id === exp.id) {
 												panelOpen = !panelOpen;
@@ -160,7 +161,8 @@
 											}
 										}}
 									>
-										edit metadata & defaults
+										<Pencil size={20} />
+										<span class="sr-only">Edit metadata & defaults</span>
 									</button>
 									<Accordion.ItemIndicator class="group">
 										<ChevronDownIcon class="size-5 transition group-data-[state=open]:rotate-180" />

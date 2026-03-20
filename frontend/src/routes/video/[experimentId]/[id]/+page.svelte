@@ -144,12 +144,10 @@
 </script>
 
 <div class="mx-auto max-w-2xl p-4">
-	<a href="/" class="mb-4 inline-block anchor">&larr; Back to experiments</a>
-
 	{#if data.mode === 'create'}
 		<h1 class="mb-4 h2 font-bold">Upload new Video</h1>
 
-		<form onsubmit={handleCreate} class="space-y-4">
+		<form onsubmit={handleCreate} class="space-y-4 pb-20">
 			<label class="label">
 				<span class="label-text text-sm">Video File</span>
 				<input class="input" type="file" accept="video/*" onchange={handleFileChange} required />
@@ -162,13 +160,17 @@
 				<aside class="alert preset-filled-error-500"><p>{error}</p></aside>
 			{/if}
 
-			<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
-				{#if saving}
-					Uploading...
-				{:else}
-					Upload Video
-				{/if}
-			</button>
+			<div class="fixed inset-x-0 bottom-0 z-40 border-t border-surface-300-700 bg-surface-50-950 p-4">
+				<div class="mx-auto max-w-2xl">
+					<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
+						{#if saving}
+							Uploading...
+						{:else}
+							Upload Video
+						{/if}
+					</button>
+				</div>
+			</div>
 		</form>
 	{:else if data.error}
 		<aside class="alert preset-filled-error-500"><p>{data.error}</p></aside>
