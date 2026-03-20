@@ -36,5 +36,6 @@
 	{/snippet}
 </T.PerspectiveCamera>
 
-<T is={splatMesh} rotation.x={1.3} rotation.y={-0.95} position.y={4.8} />
+<T is={splatMesh} rotation.x={3.4} />
+<!-- <T is={splatMesh} rotation.x={1.3} rotation.y={-0.95} position.y={4.8} /> -->
 <!-- <T.GridHelper args={[10, 10]} /> -->

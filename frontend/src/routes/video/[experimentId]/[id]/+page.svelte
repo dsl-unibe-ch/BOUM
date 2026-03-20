@@ -146,7 +146,7 @@
 
 		<h2 class="mb-2 h4 font-semibold">Point Cloud</h2>
 		<div class="mb-4">
-			<PointCloudViewer plyUrl="/point_cloud.ply" />
+			<PointCloudViewer plyUrl="/only_mais.sog" />
 		</div>
 
 		<h2 class="mb-2 h4 font-semibold">Metadata</h2>
