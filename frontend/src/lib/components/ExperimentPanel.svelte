@@ -3,8 +3,22 @@
 	import { FloatingPanel, Portal, useFloatingPanel } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
-	import { type ExperimentMetadata, type ExperimentDetail, emptyMetadata } from '$lib/types';
+	import { type MetadataDefaults, type ExperimentDetail } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
+	import { invalidateAll } from '$app/navigation';
+
+	const METADATA_KEYS: (keyof MetadataDefaults)[] = [
+		'species',
+		'cultivar',
+		'genotype',
+		'plant_age',
+		'plant_growth_stage',
+		'growth_environment',
+		'pot_volume',
+		'substrate_type',
+		'special_plant_treatments',
+		'operator'
+	];
 
 	let {
 		experimentId,
@@ -38,7 +52,11 @@
 	let saving = $state(false);
 	let error = $state('');
 	let saveMsg = $state('');
-	let metadata = $state<ExperimentMetadata>(emptyMetadata());
+	let name = $state('');
+	let initName = $state('');
+	let startDate = $state('');
+	let initStartDate = $state('');
+	let metadata = $state<MetadataDefaults>({});
 	let loadedId = $state<number | null>(null);
 
 	$effect(() => {
@@ -58,7 +76,11 @@
 				return;
 			}
 			const data: ExperimentDetail = await res.json();
-			metadata = data.metadata ?? emptyMetadata();
+			name = data.name;
+			initName = data.name;
+			startDate = data.start_date ?? '';
+			initStartDate = data.start_date ?? '';
+			metadata = data.metadata_defaults ?? {};
 			loadedId = experimentId;
 		} catch {
 			error = 'Could not reach the server.';
@@ -73,17 +95,55 @@
 		error = '';
 		saveMsg = '';
 		try {
-			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}/metadata`, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(metadata)
-			});
-			if (!res.ok) {
-				const body = await res.json().catch(() => null);
-				error = body?.msg ?? 'Failed to save metadata.';
+			const metadataPayload: Record<string, unknown> = {};
+			for (const key of METADATA_KEYS) {
+				if (metadata[key] !== undefined && metadata[key] !== '') {
+					metadataPayload[key] = metadata[key];
+				}
+			}
+
+			const experimentPayload: Record<string, unknown> = {};
+			if (name && name !== initName) experimentPayload.name = name;
+			if (startDate && startDate !== initStartDate) experimentPayload.start_date = startDate;
+
+			const promises: Promise<Response>[] = [];
+
+			if (Object.keys(metadataPayload).length > 0) {
+				promises.push(
+					authFetch(`${API_BASE_URL}/experiment/${experimentId}/metadata`, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(metadataPayload)
+					})
+				);
+			}
+
+			if (Object.keys(experimentPayload).length > 0) {
+				promises.push(
+					authFetch(`${API_BASE_URL}/experiment/${experimentId}`, {
+						method: 'PUT',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify(experimentPayload)
+					})
+				);
+			}
+
+			if (promises.length === 0) {
+				saveMsg = 'Nothing to save.';
 				return;
 			}
-			saveMsg = 'Metadata saved.';
+
+			const results = await Promise.all(promises);
+			const failed = results.find((r) => !r.ok);
+			if (failed) {
+				const body = await failed.json().catch(() => null);
+				error = body?.msg ?? 'Failed to save.';
+				return;
+			}
+			saveMsg = 'Saved successfully.';
+			if (Object.keys(experimentPayload).length > 0) {
+				invalidateAll();
+			}
 		} catch {
 			error = 'Could not reach the server.';
 		} finally {
@@ -91,6 +151,34 @@
 		}
 	}
 
+	async function deleteExperiment() {
+		if (
+			!confirm('Are you sure you want to delete this experiment? This action cannot be undone.')
+		) {
+			return;
+		}
+
+		saving = true;
+		error = '';
+		try {
+			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}`, {
+				method: 'DELETE'
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				error = body?.msg ?? 'Failed to delete experiment.';
+				return;
+			}
+
+			onOpenChange(false);
+			invalidateAll();
+		} catch {
+			error = 'Could not reach the server.';
+		} finally {
+			saving = false;
+		}
+	}
 </script>
 
 <FloatingPanel.Provider value={panel}>
@@ -119,7 +207,7 @@
 						</FloatingPanel.Control>
 					</FloatingPanel.Header>
 				</FloatingPanel.DragTrigger>
-				<FloatingPanel.Body class="min-h-0 flex-1 overflow-y-auto p-4">
+				<FloatingPanel.Body class="max-h-full min-h-0 flex-1 px-4 pt-4">
 					{#if loading}
 						<div class="flex items-center justify-center py-8">
 							<p class="text-sm opacity-60">Loading...</p>
@@ -129,9 +217,40 @@
 					{/if}
 
 					{#if loadedId !== null && !loading}
-						<form onsubmit={handleSave} class="space-y-3">
-							<MetadataForm bind:metadata disabled={saving} />
+						<form onsubmit={handleSave} class="flex max-h-full flex-col space-y-3">
+							<div class="w-full overflow-y-auto">
+								<label class="label">
+									<span class="label-text text-sm">Experiment Name</span>
+									<input
+										class="input"
+										type="text"
+										bind:value={name}
+										placeholder="Experiment Name"
+										disabled={saving}
+									/>
+								</label>
+								<label class="label">
+									<span class="label-text text-sm">Start Date</span>
+									<input
+										class="input"
+										type="datetime-local"
+										bind:value={startDate}
+										disabled={saving}
+									/>
+								</label>
 
+								<hr class="hr" />
+								<h2 class="h4 font-bold">Plant Default Metadata</h2>
+								<MetadataForm bind:metadata disabled={saving} mode="experiment" />
+								<button
+									type="button"
+									class="mt-3 btn preset-filled-error-500"
+									onclick={deleteExperiment}
+									disabled={saving}
+								>
+									Delete Experiment
+								</button>
+							</div>
 							{#if saveMsg}
 								<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>
 							{/if}
@@ -140,7 +259,7 @@
 								{#if saving}
 									Saving...
 								{:else}
-									Save Metadata
+									Save
 								{/if}
 							</button>
 						</form>

@@ -2,6 +2,7 @@
 	import './layout.css';
 	import favicon from '$lib/assets/favicon.svg';
 	import { logout } from '$lib/auth.svelte';
+	import { page } from '$app/state';
 	import type { LayoutData } from './$types';
 
 	let { data, children }: { data: LayoutData; children: any } = $props();
@@ -16,4 +17,6 @@
 	</header>
 {/if}
 
-{@render children()}
+{#key page.url.pathname}
+	{@render children()}
+{/key}

@@ -3,12 +3,12 @@
 	import { goto } from '$app/navigation';
 	import { authFetch } from '$lib/auth.svelte';
 	import { API_BASE_URL } from '$lib/constants';
-	import { type ExperimentMetadata, emptyMetadata } from '$lib/types';
+	import { type VideoMetadata, emptyVideoMetadata } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 
 	let { data }: { data: PageData } = $props();
 
-	let metadata = $state<ExperimentMetadata>(data.video?.metadata ?? emptyMetadata());
+	let metadata = $state<VideoMetadata>(data.video?.metadata ?? emptyVideoMetadata());
 	let file = $state<File | null>(null);
 	let saving = $state(false);
 	let error = $state('');
@@ -39,7 +39,6 @@
 		try {
 			const formData = new FormData();
 			formData.append('file', file);
-			formData.append('metadata', JSON.stringify(metadata));
 
 			const res = await authFetch(`${API_BASE_URL}/experiment/${data.experimentId}/videos`, {
 				method: 'POST',
@@ -49,6 +48,22 @@
 			if (!res.ok) {
 				const body = await res.json().catch(() => null);
 				error = body?.msg ?? 'Failed to upload video.';
+				return;
+			}
+
+			const videoData = await res.json();
+			const metadataRes = await authFetch(
+				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${videoData.id}/metadata`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(metadata)
+				}
+			);
+
+			if (!metadataRes.ok) {
+				const body = await metadataRes.json().catch(() => null);
+				error = body?.msg ?? 'Failed to save metadata.';
 				return;
 			}
 
@@ -89,6 +104,36 @@
 			saving = false;
 		}
 	}
+
+	async function deleteVideo() {
+		if (!data.video) return;
+		if (!confirm('Are you sure you want to delete this video? This action cannot be undone.')) {
+			return;
+		}
+
+		saving = true;
+		error = '';
+		try {
+			const res = await authFetch(
+				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}`,
+				{
+					method: 'DELETE'
+				}
+			);
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				error = body?.msg ?? 'Failed to delete video.';
+				return;
+			}
+
+			await goto('/');
+		} catch {
+			error = 'Could not reach the server.';
+		} finally {
+			saving = false;
+		}
+	}
 </script>
 
 <div class="mx-auto max-w-2xl p-4">
@@ -121,7 +166,7 @@
 	{:else if data.error}
 		<aside class="alert preset-filled-error-500"><p>{data.error}</p></aside>
 	{:else if data.video}
-		<h1 class="mb-4 h2 font-bold">{data.video.filename}</h1>
+		<h1 class="mb-4 h2 font-bold">{data.video.metadata?.title ?? data.video.filename}</h1>
 
 		<div class="mb-4 card preset-outlined-surface-200-800 p-4">
 			<p><strong>Status:</strong> {STATUS_LABELS[data.video.status] ?? 'Unknown'}</p>
@@ -140,6 +185,15 @@
 			{#if saveMsg}
 				<aside class="alert preset-filled-surface-500 text-sm"><p>{saveMsg}</p></aside>
 			{/if}
+
+			<button
+				type="button"
+				class="mt-3 btn preset-filled-error-500"
+				onclick={deleteVideo}
+				disabled={saving}
+			>
+				Delete Video
+			</button>
 
 			<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
 				{#if saving}
