@@ -20,7 +20,6 @@ export const load: PageLoad = async ({ params, fetch }) => {
 		return { mode: 'edit' as const, experimentId, video: null, error: 'Failed to load video.' };
 	}
 
-	// const video: VideoDetail = await res.json();
-	const video: VideoDetail = { id: Number(videoId), filename: 'example.mp4', status: 0, metadata: null }; // Mock data for testing
+	const video: VideoDetail = await res.json();
 	return { mode: 'edit' as const, experimentId, video };
 };
