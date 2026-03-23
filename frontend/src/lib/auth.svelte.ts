@@ -1,5 +1,5 @@
 import { goto } from '$app/navigation';
-import { API_BASE_URL } from '$lib/constants';
+import { PUBLIC_API_BASE_URL } from '$env/static/public';
 
 const TOKEN_KEY = 'auth-token';
 
@@ -48,7 +48,7 @@ export async function loadUser(fetchFn: typeof fetch = fetch): Promise<User | nu
 	}
 
 	try {
-		const res = await authFetch(`${API_BASE_URL}/user/me`, {}, fetchFn);
+		const res = await authFetch(`${PUBLIC_API_BASE_URL}/user/me`, {}, fetchFn);
 		if (!res.ok) {
 			clearToken();
 			user = null;

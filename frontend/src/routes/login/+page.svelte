@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { API_BASE_URL } from '$lib/constants';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { setToken } from '$lib/auth.svelte';
 
 	let username = $state('');
@@ -14,7 +14,7 @@
 		submitting = true;
 
 		try {
-			const response = await fetch(`${API_BASE_URL}/auth/login`, {
+			const response = await fetch(`${PUBLIC_API_BASE_URL}/auth/login`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ username, password })

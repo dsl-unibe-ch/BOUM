@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { authFetch } from '$lib/auth.svelte';
-	import { API_BASE_URL } from '$lib/constants';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { X } from '@lucide/svelte';
 
@@ -23,7 +23,7 @@
 		error = '';
 		try {
 			const res = await authFetch(
-				`${API_BASE_URL}/experiment/${experimentId}/videos/${videoId}/download`
+				`${PUBLIC_API_BASE_URL}/experiment/${experimentId}/videos/${videoId}/download`
 			);
 			if (!res.ok) {
 				error = 'Failed to load video.';

@@ -3,7 +3,7 @@
 	import { ChevronDownIcon, SquarePlusIcon, Pencil } from '@lucide/svelte';
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
-	import { API_BASE_URL } from '$lib/constants';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import type { ExperimentDetail } from '$lib/types';
 	import type { PageData } from './$types';
 	import ExperimentPanel from '$lib/components/ExperimentPanel.svelte';
@@ -48,7 +48,7 @@
 		setDetailState(experimentId, { loading: true, error: '', data: null });
 
 		try {
-			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}`);
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/${experimentId}`);
 
 			if (!res.ok) {
 				const body = await res.json().catch(() => null);
@@ -95,7 +95,7 @@
 		creating = true;
 
 		try {
-			const res = await authFetch(`${API_BASE_URL}/experiment/`, {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: newName })

@@ -1,6 +1,6 @@
 import type { PageLoad } from './$types';
 import { authFetch } from '$lib/auth.svelte';
-import { API_BASE_URL } from '$lib/constants';
+import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import type { VideoDetail } from '$lib/types';
 
 export const load: PageLoad = async ({ params, fetch }) => {
@@ -12,7 +12,7 @@ export const load: PageLoad = async ({ params, fetch }) => {
 	}
 
 	const res = await authFetch(
-		`${API_BASE_URL}/experiment/${experimentId}/videos/${videoId}`,
+		`${PUBLIC_API_BASE_URL}/experiment/${experimentId}/videos/${videoId}`,
 		{},
 		fetch
 	);

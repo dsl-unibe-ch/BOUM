@@ -2,7 +2,7 @@
 	import type { PageData } from './$types';
 	import { goto } from '$app/navigation';
 	import { authFetch } from '$lib/auth.svelte';
-	import { API_BASE_URL } from '$lib/constants';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { type VideoMetadata, emptyVideoMetadata } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 	import PointCloudViewer from '$lib/components/PointCloudViewer.svelte';
@@ -47,7 +47,7 @@
 			const formData = new FormData();
 			formData.append('file', file);
 
-			const res = await authFetch(`${API_BASE_URL}/experiment/${data.experimentId}/videos`, {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos`, {
 				method: 'POST',
 				body: formData
 			});
@@ -60,7 +60,7 @@
 
 			const videoData = await res.json();
 			const metadataRes = await authFetch(
-				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${videoData.id}/metadata`,
+				`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${videoData.id}/metadata`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -90,7 +90,7 @@
 		saveMsg = '';
 		try {
 			const res = await authFetch(
-				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}/metadata`,
+				`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}/metadata`,
 				{
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -122,7 +122,7 @@
 		error = '';
 		try {
 			const res = await authFetch(
-				`${API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}`,
+				`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}`,
 				{
 					method: 'DELETE'
 				}
@@ -160,7 +160,9 @@
 				<aside class="alert preset-filled-error-500"><p>{error}</p></aside>
 			{/if}
 
-			<div class="fixed inset-x-0 bottom-0 z-40 border-t border-surface-300-700 bg-surface-50-950 p-4">
+			<div
+				class="fixed inset-x-0 bottom-0 z-40 border-t border-surface-300-700 bg-surface-50-950 p-4"
+			>
 				<div class="mx-auto max-w-2xl">
 					<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
 						{#if saving}

@@ -2,7 +2,7 @@
 	import { XIcon } from '@lucide/svelte';
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
-	import { API_BASE_URL } from '$lib/constants';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { type MetadataDefaults, type ExperimentDetail } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 	import { invalidateAll } from '$app/navigation';
@@ -58,7 +58,7 @@
 		error = '';
 		saveMsg = '';
 		try {
-			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}`);
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/${experimentId}`);
 			if (!res.ok) {
 				error = 'Failed to load experiment details.';
 				return;
@@ -98,7 +98,7 @@
 
 			if (Object.keys(metadataPayload).length > 0) {
 				promises.push(
-					authFetch(`${API_BASE_URL}/experiment/${experimentId}/metadata`, {
+					authFetch(`${PUBLIC_API_BASE_URL}/experiment/${experimentId}/metadata`, {
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify(metadataPayload)
@@ -108,7 +108,7 @@
 
 			if (Object.keys(experimentPayload).length > 0) {
 				promises.push(
-					authFetch(`${API_BASE_URL}/experiment/${experimentId}`, {
+					authFetch(`${PUBLIC_API_BASE_URL}/experiment/${experimentId}`, {
 						method: 'PUT',
 						headers: { 'Content-Type': 'application/json' },
 						body: JSON.stringify(experimentPayload)
@@ -149,7 +149,7 @@
 		saving = true;
 		error = '';
 		try {
-			const res = await authFetch(`${API_BASE_URL}/experiment/${experimentId}`, {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/${experimentId}`, {
 				method: 'DELETE'
 			});
 
