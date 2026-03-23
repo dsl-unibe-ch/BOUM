@@ -7,7 +7,8 @@
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 	import PointCloudViewer from '$lib/components/PointCloudViewer.svelte';
 	import VideoPlayer from '$lib/components/VideoPlayer.svelte';
-	import { CirclePlay } from '@lucide/svelte';
+	import { CirclePlay, LoaderCircle } from '@lucide/svelte';
+	import { extractAudioFromVideo } from '$lib/audio';
 
 	let { data }: { data: PageData } = $props();
 
@@ -17,6 +18,9 @@
 	let error = $state('');
 	let saveMsg = $state('');
 	let playerOpen = $state(false);
+	let transcribing = $state(false);
+	let transcribeMsg = $state('');
+	let transcription = $state('');
 
 	const isPlayable = $derived(
 		data.video != null && data.video.status >= 1 && data.video.status <= 4
@@ -30,9 +34,55 @@
 		5: 'Failed'
 	};
 
-	function handleFileChange(e: Event) {
+	async function handleFileChange(e: Event) {
 		const input = e.target as HTMLInputElement;
 		file = input.files?.[0] ?? null;
+		if (!file) return;
+
+		transcribing = true;
+		transcribeMsg = '';
+		transcription = '';
+		try {
+			const wavBlob = await extractAudioFromVideo(file);
+			const formData = new FormData();
+			formData.append('file', wavBlob, 'audio.wav');
+
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/audio/`, {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				transcribeMsg = body?.msg ?? 'Transcription failed.';
+				return;
+			}
+
+			const result = await res.json();
+			if (result.metadata) {
+				const m = result.metadata;
+				metadata = {
+					...metadata,
+					title: m.title ?? metadata.title,
+					species: m.species ?? metadata.species,
+					cultivar: m.cultivar ?? metadata.cultivar,
+					genotype: m.genotype ?? metadata.genotype,
+					plant_age: m.plant_age ?? metadata.plant_age,
+					plant_growth_stage: m.plant_growth_stage ?? metadata.plant_growth_stage,
+					growth_environment: m.growth_environment ?? metadata.growth_environment,
+					pot_volume: m.pot_volume ?? metadata.pot_volume,
+					substrate_type: m.substrate_type ?? metadata.substrate_type,
+					special_plant_treatments: m.special_plant_treatments ?? metadata.special_plant_treatments,
+					operator: m.operator ?? metadata.operator
+				};
+				transcribeMsg = `Metadata filled from audio transcription.`;
+				transcription = result.transcription;
+			}
+		} catch {
+			transcribeMsg = 'Could not extract audio or reach transcription service.';
+		} finally {
+			transcribing = false;
+		}
 	}
 
 	async function handleCreate(e: SubmitEvent) {
@@ -154,7 +204,30 @@
 			</label>
 
 			<h2 class="h4 font-semibold">Metadata</h2>
-			<MetadataForm bind:metadata disabled={saving} />
+
+			{#if transcribing}
+				<aside class="alert flex items-center gap-2 preset-filled-surface-500 text-sm">
+					<LoaderCircle size={16} class="animate-spin" />
+					<p>Transcribing audio to fill metadata…</p>
+				</aside>
+			{/if}
+
+			{#if transcribeMsg}
+				<aside class="alert preset-filled-surface-500 text-sm">
+					<p>{transcribeMsg}</p>
+					{#if transcription}
+						<details class="mt-2">
+							<summary class="cursor-pointer text-sm text-primary-800-200"
+								>Show Transcription</summary
+							>
+							<pre
+								class="mt-1 bg-surface-100-900 p-2 text-xs whitespace-pre-wrap">{transcription}</pre>
+						</details>
+					{/if}
+				</aside>
+			{/if}
+
+			<MetadataForm bind:metadata disabled={saving && transcribing} />
 
 			{#if error}
 				<aside class="alert preset-filled-error-500"><p>{error}</p></aside>
@@ -164,7 +237,11 @@
 				class="fixed inset-x-0 bottom-0 z-40 border-t border-surface-300-700 bg-surface-50-950 p-4"
 			>
 				<div class="mx-auto max-w-2xl">
-					<button type="submit" class="btn w-full preset-filled-primary-500" disabled={saving}>
+					<button
+						type="submit"
+						class="btn w-full preset-filled-primary-500"
+						disabled={saving && transcribing}
+					>
 						{#if saving}
 							Uploading...
 						{:else}
