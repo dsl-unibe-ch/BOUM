@@ -31,12 +31,17 @@ services:
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api}
     container_name: boum-frontend
     networks:
       - boum-network
     depends_on:
       - backend
+    environment:
+      - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api}
 
   nginx:
     image: docker.io/nginx:alpine

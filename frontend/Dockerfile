@@ -11,6 +11,8 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
+ARG PUBLIC_API_BASE_URL
+ENV PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL}
 RUN pnpm build
 
 FROM base AS runner
