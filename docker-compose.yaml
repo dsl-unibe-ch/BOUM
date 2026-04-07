@@ -26,9 +26,23 @@ services:
     environment:
       - VIDEO_INPUT_DIR=${VIDEO_INPUT_DIR:-/data/input}
       - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_URL}
+
+      - SLURM_HOST=${SLURM_HOST}
+      - SLURM_USER=${SLURM_USER}
+      - SLURM_GRES=${SLURM_GRES}
+      - SLURM_MEMORY=${SLURM_MEMORY}
+      - SLURM_CPUS_PER_TASK=${SLURM_CPUS_PER_TASK}
+      - SLURM_BATCH_FILE=${SLURM_BATCH_FILE}
+
+      - SSH_KEY_PATH=${SSH_KEY_PATH}
+      - KNOWN_HOSTS_FILE=${KNOWN_HOSTS_FILE}
+
+      - NUM_VIDEO_PROCESSING_WORKERS=${NUM_WORKERS}
     volumes:
       - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
+      - ${SSH_KEY_LOCAL_FILE}:${SSH_KEY_PATH}:ro
+      - ${KNOWN_HOSTS_LOCAL_FILE}:${KNOWN_HOSTS_FILE}:ro
 
   frontend:
     build:

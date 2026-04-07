@@ -9,6 +9,9 @@ import logging
 import signal
 from os import stat
 
+from app.utils import run_job as run_slurm_job, get_jobs as get_slurm_jobs
+from app.config import Config
+
 class VideoStatus(IntEnum):
     PENDING = 0
     SEEN = 1
@@ -17,18 +20,16 @@ class VideoStatus(IntEnum):
     PROCESSED = 4
     FAILED = 5
 
-DATABASE_URL    = os.getenv('DATABASE_URL', 'sqlite+pysqlite:///app.db')
-VIDEO_INPUT_DIR = os.getenv('VIDEO_INPUT_DIR', '/tmp/videos')
 
 # global exit event for graceful shutdown of worker processes
 exit_event = multiprocessing.Event()
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(Config.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 logging.basicConfig(level=logging.INFO)
 
-if DATABASE_URL.startswith("sqlite"):
+if Config.DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
@@ -77,8 +78,33 @@ def process_video_mock(video_id, file_path):
     """
 
     logging.info(f"Processing video {video_id} at {file_path}")
-    time.sleep(10) 
-    logging.info(f"Finished {video_id}")
+
+    job_id = run_slurm_job(
+        gres=Config.SLURM_GRES,
+        mem=Config.SLURM_MEM,
+        ncpus=Config.SLURM_CPUS_PER_TASK,
+        batch_file=Config.SLURM_BATCH_FILE
+    )
+
+    logging.info(f"Submitted SLURM job {job_id} for video {video_id}")
+
+    while True:
+        job = [j for j in get_slurm_jobs() if j.job_id == job_id].pop()
+
+        if "COMPLETED" in job.state.current or "FAILED" in job.state.current:
+            logging.info(f"Job {job_id} for video {video_id} finished with state: {job.state.current}")
+            break
+
+        elif "CANCELLED" in job.state.current:
+            logging.warning(f"Job {job_id} for video {video_id} was cancelled.")
+            break
+
+        elif "FAILED" in job.state.current:
+            logging.error(f"Job {job_id} for video {video_id} failed.")
+            break
+
+        time.sleep(5*60)
+
 
 def monitoring_loop():
     """
@@ -88,6 +114,10 @@ def monitoring_loop():
     engine.dispose()  # Ensure new connections for this process
 
     logging.info(f"{multiprocessing.current_process().name} started.")
+
+    """
+    TODO: sort queue by time to process the latest first
+    """
 
     while not exit_event.is_set():
         session = SessionLocal()
@@ -150,7 +180,7 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     processes = []
-    num_workers = 4
+    num_workers = Config.NUM_WORKERS
     
     for i in range(num_workers):
         p = multiprocessing.Process(target=monitoring_loop, name=f"Worker-{i}")
