@@ -6,7 +6,7 @@ BOUM is a video processing and experiment management platform with four Docker C
 
 - **frontend** — SvelteKit 2 / Svelte 5 with `adapter-node`, CSR-only (`ssr = false`), port 3000
 - **backend** — Flask 3 + SQLAlchemy 2 + SQLite (WAL mode), JSON API at port 8000, all routes under `/api/*`
-- **video_processing_worker** — Python multiprocessing poller (4 workers) that advances videos through `PENDING → SEEN → CHECKED → PROCESSING → PROCESSED | FAILED`. Uses atomic conditional updates to prevent race conditions.
+- **video_processing_worker** — Python multiprocessing poller (4 workers) that advances videos through `PENDING → PROCESSING → PROCESSED | FAILED`. Uses atomic conditional updates to prevent race conditions.
 - **nginx** — reverse proxy: `/` → frontend, `/api/*` → backend
 
 ### Authentication flow

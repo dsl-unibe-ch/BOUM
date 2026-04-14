@@ -1,9 +1,10 @@
 from enum import IntEnum
 import multiprocessing
 import os
-from sqlalchemy import create_engine, Integer, String, event
+from typing import Optional
+from sqlalchemy import DateTime, ForeignKey, create_engine, Integer, String, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
-from random import randint
+from datetime import datetime
 import time
 import logging
 import signal
@@ -29,6 +30,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 logging.basicConfig(level=logging.INFO)
 
+
 if Config.DATABASE_URL.startswith("sqlite"):
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
@@ -37,8 +39,10 @@ if Config.DATABASE_URL.startswith("sqlite"):
         cursor.execute("PRAGMA synchronous=NORMAL")
         cursor.close()
 
+
 class Base(DeclarativeBase):
     ...
+
 
 class Video(Base):
     __tablename__ = "videos"
@@ -51,23 +55,14 @@ class Video(Base):
 
     status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
 
-def validate_video_mock(file_path):
-    """
-    Simulate video validation
+class VideoMetadata(Base):
+    __tablename__ = "video_metadata"
 
-    :param file_path: Description
-    :return: bool
-    """
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    video_id: Mapped[int] = mapped_column(ForeignKey("videos.id"), nullable=False)
+    creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+    
 
-    logging.info(f"Validating video at {file_path}")
-    time.sleep(2) 
-
-    random_outcome = randint(0, 10)
-    if random_outcome < 2:
-        logging.info(f"Validation failed for {file_path}")
-        return False
-
-    return True
 
 def process_video_mock(video_id, file_path):
     """
@@ -118,7 +113,7 @@ def monitoring_loop():
     logging.info(f"{multiprocessing.current_process().name} started.")
 
     """
-    TODO: sort queue by time to process the latest first
+    TODO: check if sorting the videos by creation time actually works
     """
 
     while not exit_event.is_set():
@@ -126,7 +121,7 @@ def monitoring_loop():
         try:
             task = session.query(Video).filter(
                 Video.status.is_(VideoStatus.PENDING)
-            ).first()
+            ).join(VideoMetadata).order_by(VideoMetadata.creation_date.desc()).first()
 
             if not task:
                 time.sleep(DB_POLL_INTERVAL_SECONDS)
