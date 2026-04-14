@@ -14,12 +14,12 @@ from app.config import Config
 
 class VideoStatus(IntEnum):
     PENDING = 0
-    SEEN = 1
-    CHECKED = 2
-    PROCESSING = 3
-    PROCESSED = 4
-    FAILED = 5
+    PROCESSING = 1
+    PROCESSED = 2
+    FAILED = 3
 
+JOB_POLL_INTERVAL_SECONDS = 2 * 60
+DB_POLL_INTERVAL_SECONDS = 5
 
 # global exit event for graceful shutdown of worker processes
 exit_event = multiprocessing.Event()
@@ -96,14 +96,16 @@ def process_video_mock(video_id, file_path):
             break
 
         elif "CANCELLED" in job.state.current:
-            logging.warning(f"Job {job_id} for video {video_id} was cancelled.")
-            break
+            logging.warning(f"Job {job_id} for video {video_id} was cancelled: {job.state.reason}.")
+
+            raise Exception(f"Job {job_id} was cancelled: {job.state.reason}.")
 
         elif "FAILED" in job.state.current:
-            logging.error(f"Job {job_id} for video {video_id} failed.")
-            break
+            logging.error(f"Job {job_id} for video {video_id} failed: {job.state.reason}.")
 
-        time.sleep(5*60)
+            raise Exception(f"Job {job_id} failed: {job.state.reason}.")
+
+        time.sleep(JOB_POLL_INTERVAL_SECONDS)
 
 
 def monitoring_loop():
@@ -123,41 +125,36 @@ def monitoring_loop():
         session = SessionLocal()
         try:
             task = session.query(Video).filter(
-                Video.status.in_([VideoStatus.PENDING, VideoStatus.CHECKED])
+                Video.status.is_(VideoStatus.PENDING)
             ).first()
 
             if not task:
-                time.sleep(5)
+                time.sleep(DB_POLL_INTERVAL_SECONDS)
                 continue
 
             original_status = task.status
 
-            new_interim_status = (VideoStatus.SEEN if original_status == VideoStatus.PENDING 
-                                  else VideoStatus.PROCESSING)
-
             rows_affected = session.query(Video).filter(
                 Video.id == task.id,
                 Video.status == original_status # required to avoid race condition
-            ).update({"status": new_interim_status})
+            ).update({"status": VideoStatus.PROCESSING})
 
             session.commit()
 
             if rows_affected == 0:
                 continue # lost race, loop again
 
+            # from here we can assume we have the lock on the task and can safely
+            # process it
+
             try:
-                if original_status == VideoStatus.PENDING:
-                    success = validate_video_mock(task.path)
-                    task.status = VideoStatus.CHECKED if success else VideoStatus.FAILED
-                
-                elif original_status == VideoStatus.CHECKED:
-                    process_video_mock(task.id, task.path)
-                    task.status = VideoStatus.PROCESSED
+                process_video_mock(task.id, task.path)
+                task.status = VideoStatus.PROCESSED
 
             except Exception as e:
                 logging.error(f"Execution error on task {task.id}: {e}")
                 task.status = VideoStatus.FAILED
-            
+
             session.commit()
 
         except Exception as e:
