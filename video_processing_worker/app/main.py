@@ -68,7 +68,7 @@ class VideoMetadata(Base):
     creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
 
 
-def process_video(video_filename, file_path):
+def process_video(video_id, video_file_name):
     """
     Simulate video processing
 
@@ -76,17 +76,17 @@ def process_video(video_filename, file_path):
     :param file_path: Description
     """
 
-    logging.info(f"Processing video {video_filename} at {file_path}")
+    logging.info(f"Processing video {video_id} at {video_file_name}")
 
     job_id = run_slurm_job(
         gres=Config.SLURM_GRES,
         mem=Config.SLURM_MEM,
         ncpus=Config.SLURM_CPUS_PER_TASK,
         batch_file=Config.SLURM_BATCH_FILE,
-        args=[video_filename],
+        args=[video_file_name],
     )
 
-    logging.info(f"Submitted SLURM job {job_id} for video {video_filename}")
+    logging.info(f"Submitted SLURM job {job_id} for video {video_id}")
 
     while True:
         jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
@@ -97,20 +97,20 @@ def process_video(video_filename, file_path):
 
         if "COMPLETED" in job.state.current or "FAILED" in job.state.current:
             logging.info(
-                f"Job {job_id} for video {video_filename} finished with state: {job.state.current}"
+                f"Job {job_id} for video {video_id} finished with state: {job.state.current}"
             )
             break
 
         elif "CANCELLED" in job.state.current:
             logging.warning(
-                f"Job {job_id} for video {video_filename} was cancelled: {job.state.reason}."
+                f"Job {job_id} for video {video_id} was cancelled: {job.state.reason}."
             )
 
             raise Exception(f"Job {job_id} was cancelled: {job.state.reason}.")
 
         elif "FAILED" in job.state.current:
             logging.error(
-                f"Job {job_id} for video {video_filename} failed: {job.state.reason}."
+                f"Job {job_id} for video {video_id} failed: {job.state.reason}."
             )
 
             raise Exception(f"Job {job_id} failed: {job.state.reason}.")
