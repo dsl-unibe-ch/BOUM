@@ -86,7 +86,7 @@ def process_video(video_id, video_file_name):
         args=[video_file_name],
     )
 
-    logging.info(f"Submitted SLURM job {job_id} for video {video_id}")
+    logging.info(f"Submitted SLURM job {job_id} for video {video_file_name}")
 
     while True:
         jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
