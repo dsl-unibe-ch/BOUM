@@ -1,23 +1,27 @@
-from enum import IntEnum
+import logging
 import multiprocessing
 import os
-from typing import Optional
-from sqlalchemy import DateTime, ForeignKey, create_engine, Integer, String, event
-from sqlalchemy.orm import sessionmaker, DeclarativeBase, Mapped, mapped_column
-from datetime import datetime
-import time
-import logging
 import signal
+import time
+from datetime import datetime
+from enum import IntEnum
 from os import stat
+from typing import Optional
 
-from app.utils import run_job as run_slurm_job, get_jobs as get_slurm_jobs
+from sqlalchemy import DateTime, ForeignKey, Integer, String, create_engine, event
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
 from app.config import Config
+from app.utils import get_jobs as get_slurm_jobs
+from app.utils import run_job as run_slurm_job
+
 
 class VideoStatus(IntEnum):
     PENDING = 0
     PROCESSING = 1
     PROCESSED = 2
     FAILED = 3
+
 
 JOB_POLL_INTERVAL_SECONDS = 2 * 60
 DB_POLL_INTERVAL_SECONDS = 5
@@ -32,6 +36,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 if Config.DATABASE_URL.startswith("sqlite"):
+
     @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
@@ -40,8 +45,7 @@ if Config.DATABASE_URL.startswith("sqlite"):
         cursor.close()
 
 
-class Base(DeclarativeBase):
-    ...
+class Base(DeclarativeBase): ...
 
 
 class Video(Base):
@@ -55,48 +59,59 @@ class Video(Base):
 
     status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
 
+
 class VideoMetadata(Base):
     __tablename__ = "video_metadata"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     video_id: Mapped[int] = mapped_column(ForeignKey("videos.id"), nullable=False)
     creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    
 
 
-def process_video_mock(video_id, file_path):
+def process_video(video_filename, file_path):
     """
     Simulate video processing
-    
+
     :param video_id: Description
     :param file_path: Description
     """
 
-    logging.info(f"Processing video {video_id} at {file_path}")
+    logging.info(f"Processing video {video_filename} at {file_path}")
 
     job_id = run_slurm_job(
         gres=Config.SLURM_GRES,
         mem=Config.SLURM_MEM,
         ncpus=Config.SLURM_CPUS_PER_TASK,
-        batch_file=Config.SLURM_BATCH_FILE
+        batch_file=Config.SLURM_BATCH_FILE,
+        args=[video_filename],
     )
 
-    logging.info(f"Submitted SLURM job {job_id} for video {video_id}")
+    logging.info(f"Submitted SLURM job {job_id} for video {video_filename}")
 
     while True:
-        job = [j for j in get_slurm_jobs() if j.job_id == job_id].pop()
+        jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
+        try:
+            job = jobs.pop()
+        except IndexError:
+            raise Exception(f"Error while polling jobs: job with id {job_id} is gone")
 
         if "COMPLETED" in job.state.current or "FAILED" in job.state.current:
-            logging.info(f"Job {job_id} for video {video_id} finished with state: {job.state.current}")
+            logging.info(
+                f"Job {job_id} for video {video_filename} finished with state: {job.state.current}"
+            )
             break
 
         elif "CANCELLED" in job.state.current:
-            logging.warning(f"Job {job_id} for video {video_id} was cancelled: {job.state.reason}.")
+            logging.warning(
+                f"Job {job_id} for video {video_filename} was cancelled: {job.state.reason}."
+            )
 
             raise Exception(f"Job {job_id} was cancelled: {job.state.reason}.")
 
         elif "FAILED" in job.state.current:
-            logging.error(f"Job {job_id} for video {video_id} failed: {job.state.reason}.")
+            logging.error(
+                f"Job {job_id} for video {video_filename} failed: {job.state.reason}."
+            )
 
             raise Exception(f"Job {job_id} failed: {job.state.reason}.")
 
@@ -119,36 +134,44 @@ def monitoring_loop():
     while not exit_event.is_set():
         session = SessionLocal()
         try:
-            task = session.query(Video).filter(
-                Video.status.is_(VideoStatus.PENDING)
-            ).join(VideoMetadata).order_by(VideoMetadata.creation_date.desc()).first()
+            current_video = (
+                session.query(Video)
+                .filter(Video.status.is_(VideoStatus.PENDING))
+                .join(VideoMetadata)
+                .order_by(VideoMetadata.creation_date.desc())
+                .first()
+            )
 
-            if not task:
+            if not current_video:
                 time.sleep(DB_POLL_INTERVAL_SECONDS)
                 continue
 
-            original_status = task.status
+            original_status = current_video.status
 
-            rows_affected = session.query(Video).filter(
-                Video.id == task.id,
-                Video.status == original_status # required to avoid race condition
-            ).update({"status": VideoStatus.PROCESSING})
+            rows_affected = (
+                session.query(Video)
+                .filter(
+                    Video.id == current_video.id,
+                    Video.status == original_status,  # required to avoid race condition
+                )
+                .update({"status": VideoStatus.PROCESSING})
+            )
 
             session.commit()
 
             if rows_affected == 0:
-                continue # lost race, loop again
+                continue  # lost race, loop again
 
             # from here we can assume we have the lock on the task and can safely
             # process it
 
             try:
-                process_video_mock(task.id, task.path)
-                task.status = VideoStatus.PROCESSED
+                process_video(current_video.id, current_video.path)
+                current_video.status = VideoStatus.PROCESSED
 
             except Exception as e:
-                logging.error(f"Execution error on task {task.id}: {e}")
-                task.status = VideoStatus.FAILED
+                logging.error(f"Execution error on task {current_video.id}: {e}")
+                current_video.status = VideoStatus.FAILED
 
             session.commit()
 
@@ -159,6 +182,7 @@ def monitoring_loop():
         finally:
             session.close()
 
+
 def signal_handler(_sig, _frame):
     """
     Handle shutdown signals to gracefully terminate worker processes.
@@ -167,13 +191,14 @@ def signal_handler(_sig, _frame):
     logging.info("Shutdown signal received. Finishing current tasks...")
     exit_event.set()
 
+
 def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
     processes = []
     num_workers = Config.NUM_WORKERS
-    
+
     for i in range(num_workers):
         p = multiprocessing.Process(target=monitoring_loop, name=f"Worker-{i}")
         p.start()
@@ -181,6 +206,7 @@ def main():
 
     for p in processes:
         p.join()
+
 
 if __name__ == "__main__":
     main()
