@@ -4,6 +4,7 @@
 	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
+	import { VIDEO_STATUS_LABELS } from '$lib/constants';
 	import type { ExperimentDetail } from '$lib/types';
 	import type { PageData } from './$types';
 	import ExperimentPanel from '$lib/components/ExperimentPanel.svelte';
@@ -23,15 +24,6 @@
 	let detailsByExperiment = $state<Record<number, DetailState>>({});
 	let selectedExp = $state<{ id: number; name: string } | null>(null);
 	let panelOpen = $state(false);
-
-	const STATUS_LABELS: Record<number, string> = {
-		0: 'Pending',
-		1: 'Seen',
-		2: 'Checked',
-		3: 'Processing',
-		4: 'Processed',
-		5: 'Failed'
-	};
 
 	function getDetailState(experimentId: number): DetailState {
 		return detailsByExperiment[experimentId] ?? { loading: false, error: '', data: null };
@@ -194,7 +186,7 @@
 																{video.metadata?.title || video.filename || `Video ${video.id}`}
 															</a>
 															<span class="text-sm opacity-60">
-																{STATUS_LABELS[video.status] ?? 'Unknown'}
+																{VIDEO_STATUS_LABELS[video.status] ?? 'Unknown'}
 															</span>
 														</li>
 													{/each}

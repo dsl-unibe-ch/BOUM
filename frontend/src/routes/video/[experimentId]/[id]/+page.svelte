@@ -3,6 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { authFetch } from '$lib/auth.svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
+	import { VIDEO_STATUS_LABELS } from '$lib/constants';
 	import { type VideoMetadata, emptyVideoMetadata } from '$lib/types';
 	import MetadataForm from '$lib/components/MetadataForm.svelte';
 	import PointCloudViewer from '$lib/components/PointCloudViewer.svelte';
@@ -25,15 +26,6 @@
 	const isPlayable = $derived(
 		data.video != null && data.video.status >= 1 && data.video.status <= 4
 	);
-	const STATUS_LABELS: Record<number, string> = {
-		0: 'Pending',
-		1: 'Seen',
-		2: 'Checked',
-		3: 'Processing',
-		4: 'Processed',
-		5: 'Failed'
-	};
-
 	async function handleFileChange(e: Event) {
 		const input = e.target as HTMLInputElement;
 		file = input.files?.[0] ?? null;
@@ -276,7 +268,7 @@
 		{/if}
 
 		<div class="mb-4 card preset-outlined-surface-200-800 p-4">
-			<p><strong>Status:</strong> {STATUS_LABELS[data.video.status] ?? 'Unknown'}</p>
+			<p><strong>Status:</strong> {VIDEO_STATUS_LABELS[data.video.status] ?? 'Unknown'}</p>
 			<p><strong>ID:</strong> {data.video.id}</p>
 		</div>
 
