@@ -17,7 +17,7 @@ JWT (HS256, 24h expiry) issued by `POST /api/auth/login`. The frontend stores th
 
 - **User** — id, username (unique), pw_hash (bcrypt), role (`0=ADMIN`, `1=USER`), M2M experiments
 - **Experiment** — id, name, O2M videos, M2M users
-- **Video** — id, filename, path, status (IntEnum 0–5), FK experiment
+- **Video** — id, filename, path, status (IntEnum 0–3), FK experiment
 
 ### API blueprints
 
