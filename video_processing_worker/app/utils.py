@@ -82,7 +82,7 @@ def get_jobs() -> list[Job]:
     ]
 
 
-def run_job(gres: str, mem: int, ncpus: int, batch_file: str, args: list[str]) -> int:
+def run_job(batch_file: str, args: list[str]) -> int:
     """
     Submit batch.
 
@@ -90,9 +90,7 @@ def run_job(gres: str, mem: int, ncpus: int, batch_file: str, args: list[str]) -
     DO NOT use this with untrusted data.
     """
 
-    logging.info(
-        f"Submitting SLURM job with gres={gres}, mem={mem}G, ncpus={ncpus}, batch_file={batch_file}"
-    )
+    logging.info(f"Submitting SLURM job with batch_file={batch_file}, args={args}")
 
     id_, _ = connect_and_run(
         # f"sbatch --parsable --gres={gres} --mem={mem}G --cpus-per-task={ncpus} {batch_file} {' '.join(args)}"

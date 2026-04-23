@@ -748,6 +748,40 @@ def download_video(user_id, role, experiment_id, video_id):
         return jsonify({"msg": "Video file not found on server"}), 500
 
 
+@experiment_bp.route(
+    "/<int:experiment_id>/videos/<int:video_id>/pointcloud", methods=["GET"]
+)
+@require_authentication
+def download_pointcloud(user_id, role, experiment_id, video_id):
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    video = db.session.get(Video, video_id)
+    if not video or video.experiment_id != experiment_id:
+        return jsonify({"msg": "Video not found in experiment"}), 404
+
+    if video.status != "processed":
+        return jsonify(
+            {"msg": f"Pointcloud not available (status is {video.status})"}
+        ), 404
+
+    video_uuid = video.path.rsplit(".", 1)[0]
+    filename = f"{video_uuid}/{current_app.config['POINTCLOUD_RELATIVE_PATH']}"
+
+    try:
+        return send_from_directory(
+            directory=current_app.config["POINTCLOUD_BASE_DIR"],
+            path=filename,
+            as_attachment=True,
+            download_name=f"{video_uuid}.ply",
+        )
+    except FileNotFoundError:
+        return jsonify({"msg": "Pointcloud file not found on server"}), 500
+
+
 @experiment_bp.route("/<int:experiment_id>/videos/<int:video_id>", methods=["DELETE"])
 @require_authentication
 def delete_video_from_experiment(user_id, role, experiment_id, video_id):
