@@ -1,8 +1,9 @@
 import os
 import uuid
 from datetime import datetime
+from re import S
 
-from app.constants import UserRole
+from app.constants import UserRole, VideoStatus
 from app.extensions import db
 from app.models import (
     Experiment,
@@ -763,7 +764,7 @@ def download_pointcloud(user_id, role, experiment_id, video_id):
     if not video or video.experiment_id != experiment_id:
         return jsonify({"msg": "Video not found in experiment"}), 404
 
-    if video.status != "processed":
+    if video.status != VideoStatus.PROCESSED:
         return jsonify(
             {"msg": f"Pointcloud not available (status is {video.status})"}
         ), 404
