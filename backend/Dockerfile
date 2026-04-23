@@ -13,6 +13,8 @@ RUN pip install --no-cache-dir --user -r requirements.txt && \
 
 COPY . .
 
+RUN mkdir -p ${UPLOAD_FOLDER:-/data/input}
+
 EXPOSE 8000
 
 CMD ["/bin/bash", "entry.sh"]

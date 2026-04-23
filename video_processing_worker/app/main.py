@@ -79,9 +79,6 @@ def process_video(video_id, video_file_name):
     logging.info(f"Processing video {video_id} at {video_file_name}")
 
     job_id = run_slurm_job(
-        gres=Config.SLURM_GRES,
-        mem=Config.SLURM_MEM,
-        ncpus=Config.SLURM_CPUS_PER_TASK,
         batch_file=Config.SLURM_BATCH_FILE,
         args=[video_file_name],
     )
