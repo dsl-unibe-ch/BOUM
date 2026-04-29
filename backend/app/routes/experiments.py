@@ -1,7 +1,6 @@
 import os
 import uuid
 from datetime import datetime
-from re import S
 
 from app.constants import UserRole, VideoStatus
 from app.extensions import db
@@ -754,6 +753,43 @@ def download_video(user_id, role, experiment_id, video_id):
 )
 @require_authentication
 def download_pointcloud(user_id, role, experiment_id, video_id):
+    """
+    Download a pointcloud file associated with a processed video.
+
+    ---
+    tags:
+        - Experiments
+    security:
+        - Bearer: []
+    parameters:
+        - name: experiment_id
+          in: path
+          schema:
+              type: integer
+          required: true
+          description: The ID of the experiment
+        - name: video_id
+          in: path
+          schema:
+              type: integer
+          required: true
+          description: The ID of the video
+    responses:
+        200:
+            description: Pointcloud file returned successfully
+            content:
+                application/octet-stream:
+                    schema:
+                        type: string
+                        format: binary
+        401:
+            description: Unauthorized
+        404:
+            description: Experiment, video, or pointcloud not found or video not yet processed (pointcloud unavailable)
+        500:
+            description: Pointcloud file not found on server
+    """
+
     if not (experiment := db.session.get(Experiment, experiment_id)):
         return jsonify({"msg": "Experiment not found"}), 404
 
