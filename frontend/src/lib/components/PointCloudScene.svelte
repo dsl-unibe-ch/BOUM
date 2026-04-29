@@ -1,12 +1,22 @@
 <script lang="ts">
 	import { T, useThrelte, useTask } from '@threlte/core';
-	import { SplatMesh } from '@sparkjsdev/spark';
+	import { SparkRenderer, SplatMesh } from '@sparkjsdev/spark';
 	import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+	import { authFetch } from '$lib/auth.svelte';
 
 	let { plyUrl }: { plyUrl: string } = $props();
 
 	const { renderer, invalidate } = useThrelte();
-	const splatMesh = new SplatMesh({ url: plyUrl });
+	const sparkRenderer = new SparkRenderer({ renderer });
+	let fileBytes = $derived(authFetch(plyUrl).then((res) => res.arrayBuffer()));
+
+	let splatMesh = $state<SplatMesh | null>(null);
+
+	$effect(() => {
+		fileBytes.then((bytes) => {
+			splatMesh = new SplatMesh({ fileBytes: bytes });
+		});
+	});
 
 	let controls: OrbitControls | undefined;
 
@@ -36,6 +46,8 @@
 	{/snippet}
 </T.PerspectiveCamera>
 
-<T is={splatMesh} rotation.x={3.4} />
-<!-- <T is={splatMesh} rotation.x={1.3} rotation.y={-0.95} position.y={4.8} /> -->
+<T is={sparkRenderer} />
+{#if splatMesh}
+	<T is={splatMesh} rotation.x={-1.6} position.y={1.2} />
+{/if}
 <!-- <T.GridHelper args={[10, 10]} /> -->

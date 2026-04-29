@@ -274,7 +274,7 @@
 
 		<h2 class="mb-2 h4 font-semibold">Point Cloud</h2>
 		<div class="mb-4">
-			<PointCloudViewer plyUrl="/only_mais.sog" />
+			<PointCloudViewer plyUrl={`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}/pointcloud`} />
 		</div>
 
 		<h2 class="mb-2 h4 font-semibold">Metadata</h2>
