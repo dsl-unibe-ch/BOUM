@@ -48,23 +48,24 @@ services:
     build:
       context: ./frontend
       args:
-        - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api}
+        - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-https://plant3d.ips.unibe.ch/api}
     container_name: boum-frontend
     networks:
       - boum-network
     depends_on:
       - backend
     environment:
-      - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api}
+      - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-https://plant3d.ips.unibe.ch/api}
 
-  nginx:
-    image: docker.io/nginx:alpine
-    container_name: boum-nginx
+  caddy:
+    image: docker.io/caddy:alpine
+    container_name: boum-caddy
     ports:
-      - "8000:80"
-      - "8443:443"
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - ./certs:/etc/caddy/certs:ro
     networks:
       - boum-network
     depends_on:

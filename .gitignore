@@ -2,3 +2,7 @@
 db_data/
 known_hosts
 id_ed25519_boum
+certs/
+*.bak
+*.swp
+
