@@ -59,24 +59,27 @@ mkdir -p certs
 # copy your cert and key into certs/
 ```
 
-## Running with Podman
+## Running with Docker
 
-Make sure you have `podman` and `podman-compose` installed.
+Make sure you have `docker` and `docker compose` installed.
 
 1. Create the `.env` file as described above.
 
 2. Place TLS certificates in `./certs/` as described above.
 
-3. Create the host directories for data persistence (adjust paths to match your `.env`):
+3. Create the host directories for data persistence (adjust paths to match your `.env`) and ensure they are owned by UID 1000 — the `backend` and `video_processor` containers run as a non-root `app` user with UID/GID 1000:
 
 ```sh
 mkdir -p db_data
+sudo chown -R 1000:1000 db_data "$VIDEO_LOCAL_DIR"
 ```
+
+The same applies to the SSH key and `known_hosts` file used by the worker — they must be readable by UID 1000.
 
 4. Build and start all services:
 
 ```sh
-podman-compose up --build -d
+docker compose up --build -d
 ```
 
 The application will be available at `https://plant3d.ips.unibe.ch`. Log in with the username `admin` and the password you set in `ADMIN_PASSWORD`.
@@ -84,13 +87,13 @@ The application will be available at `https://plant3d.ips.unibe.ch`. Log in with
 To stop everything:
 
 ```sh
-podman-compose down
+docker compose down
 ```
 
 To view logs:
 
 ```sh
-podman-compose logs -f
+docker compose logs -f
 ```
 
 ## API
@@ -104,7 +107,7 @@ See `backend/README.md` for more info.
 To run just the backend services while developing the frontend locally:
 
 ```sh
-podman-compose up backend video_processor caddy -d
+docker compose up backend video_processor caddy -d
 ```
 
 Then, in the `frontend/` directory:
