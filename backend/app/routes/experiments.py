@@ -1,19 +1,24 @@
-import uuid
 import os
-
-from flask import Blueprint, current_app, request, jsonify, send_from_directory
-
+import uuid
 from datetime import datetime
+from re import S
 
-from app.utils import require_admin, require_authentication, update_from_dict
-from app.models import Experiment, ExperimentMetadataDefaults, User, Video, VideoMetadata
+from app.constants import UserRole, VideoStatus
 from app.extensions import db
-from app.constants import UserRole
+from app.models import (
+    Experiment,
+    ExperimentMetadataDefaults,
+    User,
+    Video,
+    VideoMetadata,
+)
+from app.utils import require_admin, require_authentication, update_from_dict
+from flask import Blueprint, current_app, jsonify, request, send_from_directory
 
-experiment_bp = Blueprint('experiment', __name__)
+experiment_bp = Blueprint("experiment", __name__)
 
 
-@experiment_bp.route('/', methods=['POST'])
+@experiment_bp.route("/", methods=["POST"])
 @require_authentication
 def create_experiment(_user_id, _role):
     """
@@ -75,14 +80,18 @@ def create_experiment(_user_id, _role):
     db.session.add(experiment)
     db.session.commit()
 
-    return jsonify({
-        "id": experiment.id,
-        "name": experiment.name,
-        "start_date": experiment.start_date.isoformat() if experiment.start_date else None,
-    }), 201
+    return jsonify(
+        {
+            "id": experiment.id,
+            "name": experiment.name,
+            "start_date": experiment.start_date.isoformat()
+            if experiment.start_date
+            else None,
+        }
+    ), 201
 
 
-@experiment_bp.route('/', methods=['GET'])
+@experiment_bp.route("/", methods=["GET"])
 @require_authentication
 @require_admin
 def list_experiments(_user_id, _role):
@@ -123,19 +132,21 @@ def list_experiments(_user_id, _role):
     """
     experiments = db.session.execute(db.select(Experiment)).scalars().all()
 
-    return jsonify([
-        {
-            "id": e.id,
-            "name": e.name,
-            "start_date": e.start_date.isoformat() if e.start_date else None,
-            "user_count": len(e.users),
-            "video_count": len(e.videos),
-        }
-        for e in experiments
-    ]), 200
+    return jsonify(
+        [
+            {
+                "id": e.id,
+                "name": e.name,
+                "start_date": e.start_date.isoformat() if e.start_date else None,
+                "user_count": len(e.users),
+                "video_count": len(e.videos),
+            }
+            for e in experiments
+        ]
+    ), 200
 
 
-@experiment_bp.route('/me', methods=['GET'])
+@experiment_bp.route("/me", methods=["GET"])
 @require_authentication
 def list_my_experiments(user_id, _role):
     """
@@ -170,22 +181,28 @@ def list_my_experiments(user_id, _role):
             description: Unauthorized
     """
 
-    experiments = db.session.execute(
-        db.select(Experiment).join(Experiment.users).where(User.id == user_id)
-    ).scalars().all()
+    experiments = (
+        db.session.execute(
+            db.select(Experiment).join(Experiment.users).where(User.id == user_id)
+        )
+        .scalars()
+        .all()
+    )
 
-    return jsonify([
-        {
-            "id": e.id,
-            "name": e.name,
-            "start_date": e.start_date.isoformat() if e.start_date else None,
-            "video_count": len(e.videos),
-        }
-        for e in experiments
-    ]), 200
+    return jsonify(
+        [
+            {
+                "id": e.id,
+                "name": e.name,
+                "start_date": e.start_date.isoformat() if e.start_date else None,
+                "video_count": len(e.videos),
+            }
+            for e in experiments
+        ]
+    ), 200
 
 
-@experiment_bp.route('/<int:experiment_id>', methods=['GET'])
+@experiment_bp.route("/<int:experiment_id>", methods=["GET"])
 @require_authentication
 def get_experiment(user_id, role, experiment_id):
     """
@@ -261,7 +278,7 @@ def get_experiment(user_id, role, experiment_id):
     return jsonify(experiment.json()), 200
 
 
-@experiment_bp.route('/<int:experiment_id>', methods=['PUT'])
+@experiment_bp.route("/<int:experiment_id>", methods=["PUT"])
 @require_authentication
 def update_experiment(user_id, role, experiment_id):
     """
@@ -326,14 +343,18 @@ def update_experiment(user_id, role, experiment_id):
 
     db.session.commit()
 
-    return jsonify({
-        "id": experiment.id,
-        "name": experiment.name,
-        "start_date": experiment.start_date.isoformat() if experiment.start_date else None,
-    }), 200
+    return jsonify(
+        {
+            "id": experiment.id,
+            "name": experiment.name,
+            "start_date": experiment.start_date.isoformat()
+            if experiment.start_date
+            else None,
+        }
+    ), 200
 
 
-@experiment_bp.route('/<int:experiment_id>', methods=['DELETE'])
+@experiment_bp.route("/<int:experiment_id>", methods=["DELETE"])
 @require_authentication
 def delete_experiment(user_id, role, experiment_id):
     """
@@ -372,7 +393,7 @@ def delete_experiment(user_id, role, experiment_id):
     return jsonify({"msg": "Experiment deleted"}), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/users', methods=['POST'])
+@experiment_bp.route("/<int:experiment_id>/users", methods=["POST"])
 @require_authentication
 def add_user_to_experiment(_user_id, role, experiment_id):
     """
@@ -436,7 +457,9 @@ def add_user_to_experiment(_user_id, role, experiment_id):
     return jsonify({"msg": "User added to experiment"}), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/users/<int:target_user_id>', methods=['DELETE'])
+@experiment_bp.route(
+    "/<int:experiment_id>/users/<int:target_user_id>", methods=["DELETE"]
+)
 @require_authentication
 @require_admin
 def remove_user_from_experiment(_user_id, _role, experiment_id, target_user_id):
@@ -482,7 +505,7 @@ def remove_user_from_experiment(_user_id, _role, experiment_id, target_user_id):
     return jsonify({"msg": "User removed from experiment"}), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/videos', methods=['POST'])
+@experiment_bp.route("/<int:experiment_id>/videos", methods=["POST"])
 @require_authentication
 def upload_video_to_experiment(user_id, role, experiment_id):
     """
@@ -549,27 +572,29 @@ def upload_video_to_experiment(user_id, role, experiment_id):
             {"msg": f"Filename too long (max {Video.MAX_NAME_LEN} characters)"}
         ), 400
 
-    ext = file.filename.split('.')[-1].lower()
+    ext = file.filename.split(".")[-1].lower()
 
-    if ext not in current_app.config['ALLOWED_VIDEO_EXTENSIONS']:
+    if ext not in current_app.config["ALLOWED_VIDEO_EXTENSIONS"]:
         return jsonify({"msg": "Invalid file type"}), 400
 
     real_filename = f"{uuid.uuid4()}.{ext}"
-    path = os.path.join(current_app.config['UPLOAD_FOLDER'], real_filename)
+    full_path = os.path.join(current_app.config["UPLOAD_FOLDER"], real_filename)
 
-    new_video = Video(filename=file.filename, path=real_filename, experiment_id=experiment_id)
+    new_video = Video(
+        filename=file.filename, path=real_filename, experiment_id=experiment_id
+    )
 
     db.session.add(new_video)
     db.session.flush()
 
-    file.save(path)
+    file.save(full_path)
 
     db.session.commit()
 
     return jsonify({"id": new_video.id}), 201
 
 
-@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>', methods=['GET'])
+@experiment_bp.route("/<int:experiment_id>/videos/<int:video_id>", methods=["GET"])
 @require_authentication
 def get_video(user_id, role, experiment_id, video_id):
     """
@@ -651,16 +676,20 @@ def get_video(user_id, role, experiment_id, video_id):
     if not video or video.experiment_id != experiment_id:
         return jsonify({"msg": "Video not found in experiment"}), 404
 
-    return jsonify({
-        "id": video.id,
-        "filename": video.filename,
-        "status": video.status,
-        "download_url": f"/api/experiment/{experiment_id}/videos/{video_id}/download",
-        "metadata": video.video_metadata.json() if video.video_metadata else {},
-    }), 200
+    return jsonify(
+        {
+            "id": video.id,
+            "filename": video.filename,
+            "status": video.status,
+            "download_url": f"/api/experiment/{experiment_id}/videos/{video_id}/download",
+            "metadata": video.video_metadata.json() if video.video_metadata else {},
+        }
+    ), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>/download', methods=['GET'])
+@experiment_bp.route(
+    "/<int:experiment_id>/videos/<int:video_id>/download", methods=["GET"]
+)
 @require_authentication
 def download_video(user_id, role, experiment_id, video_id):
     """
@@ -709,18 +738,52 @@ def download_video(user_id, role, experiment_id, video_id):
 
     try:
         return send_from_directory(
-            directory=current_app.config['UPLOAD_FOLDER'],
+            directory=current_app.config["UPLOAD_FOLDER"],
             path=video.path,
             as_attachment=True,
             download_name="".join(
-                c if (c.isalnum() or c in ('.')) else '_' for c in video.filename
-            )
+                c if (c.isalnum() or c in (".")) else "_" for c in video.filename
+            ),
         )
     except FileNotFoundError:
         return jsonify({"msg": "Video file not found on server"}), 500
 
 
-@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>', methods=['DELETE'])
+@experiment_bp.route(
+    "/<int:experiment_id>/videos/<int:video_id>/pointcloud", methods=["GET"]
+)
+@require_authentication
+def download_pointcloud(user_id, role, experiment_id, video_id):
+    if not (experiment := db.session.get(Experiment, experiment_id)):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
+        return jsonify({"msg": "Experiment not found"}), 404
+
+    video = db.session.get(Video, video_id)
+    if not video or video.experiment_id != experiment_id:
+        return jsonify({"msg": "Video not found in experiment"}), 404
+
+    if video.status != VideoStatus.PROCESSED:
+        return jsonify(
+            {"msg": f"Pointcloud not available (status is {video.status})"}
+        ), 404
+
+    video_uuid = video.path.rsplit(".", 1)[0]
+    filename = f"{video_uuid}/{current_app.config['POINTCLOUD_RELATIVE_PATH']}"
+
+    try:
+        return send_from_directory(
+            directory=current_app.config["POINTCLOUD_BASE_DIR"],
+            path=filename,
+            as_attachment=True,
+            download_name=f"{video_uuid}.ply",
+        )
+    except FileNotFoundError:
+        return jsonify({"msg": "Pointcloud file not found on server"}), 500
+
+
+@experiment_bp.route("/<int:experiment_id>/videos/<int:video_id>", methods=["DELETE"])
 @require_authentication
 def delete_video_from_experiment(user_id, role, experiment_id, video_id):
     """
@@ -761,7 +824,7 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
         return jsonify({"msg": "Video not found in experiment"}), 404
 
     try:
-        os.remove(os.path.join(current_app.config['UPLOAD_FOLDER'], video.path))
+        os.remove(os.path.join(current_app.config["UPLOAD_FOLDER"], video.path))
     except FileNotFoundError:
         pass
 
@@ -771,7 +834,7 @@ def delete_video_from_experiment(user_id, role, experiment_id, video_id):
     return jsonify({"msg": "Video deleted"}), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/metadata', methods=['GET'])
+@experiment_bp.route("/<int:experiment_id>/metadata", methods=["GET"])
 @require_authentication
 def get_experiment_metadata_defaults(user_id, role, experiment_id):
     """
@@ -831,10 +894,16 @@ def get_experiment_metadata_defaults(user_id, role, experiment_id):
     if role != UserRole.ADMIN and not experiment.is_user_participant(user_id):
         return jsonify({"msg": "Experiment not found"}), 404
 
-    return jsonify({"metadata_defaults": experiment.metadata_defaults.json() if experiment.metadata_defaults else {}}), 200
+    return jsonify(
+        {
+            "metadata_defaults": experiment.metadata_defaults.json()
+            if experiment.metadata_defaults
+            else {}
+        }
+    ), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/metadata', methods=['POST'])
+@experiment_bp.route("/<int:experiment_id>/metadata", methods=["POST"])
 @require_authentication
 def set_experiment_metadata_defaults(user_id, role, experiment_id):
     """
@@ -940,10 +1009,14 @@ def set_experiment_metadata_defaults(user_id, role, experiment_id):
 
     db.session.commit()
 
-    return jsonify({"msg": "Metadata defaults updated", "metadata_defaults": defaults.json()}), 200
+    return jsonify(
+        {"msg": "Metadata defaults updated", "metadata_defaults": defaults.json()}
+    ), 200
 
 
-@experiment_bp.route('/<int:experiment_id>/videos/<int:video_id>/metadata', methods=['POST'])
+@experiment_bp.route(
+    "/<int:experiment_id>/videos/<int:video_id>/metadata", methods=["POST"]
+)
 @require_authentication
 def set_video_metadata(user_id, role, experiment_id, video_id):
     """

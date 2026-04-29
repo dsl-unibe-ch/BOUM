@@ -8,12 +8,9 @@ class UserRole(IntEnum):
 
 class VideoStatus(IntEnum):
     PENDING = 0
-    SEEN = 1
-    CHECKED = 2
-    PROCESSING = 3
-    PROCESSED = 4
-    FAILED = 5
-
+    PROCESSING = 1
+    PROCESSED = 2
+    FAILED = 3
 
 SWAGGER_TEMPLATE = {
     "swagger": None,

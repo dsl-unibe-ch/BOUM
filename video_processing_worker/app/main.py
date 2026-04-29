@@ -1,0 +1,209 @@
+import logging
+import multiprocessing
+import os
+import signal
+import time
+from datetime import datetime
+from enum import IntEnum
+from os import stat
+from typing import Optional
+
+from sqlalchemy import DateTime, ForeignKey, Integer, String, create_engine, event
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+
+from app.config import Config
+from app.utils import get_jobs as get_slurm_jobs
+from app.utils import run_job as run_slurm_job
+
+
+class VideoStatus(IntEnum):
+    PENDING = 0
+    PROCESSING = 1
+    PROCESSED = 2
+    FAILED = 3
+
+
+JOB_POLL_INTERVAL_SECONDS = 2 * 60
+DB_POLL_INTERVAL_SECONDS = 5
+
+# global exit event for graceful shutdown of worker processes
+exit_event = multiprocessing.Event()
+
+engine = create_engine(Config.DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+logging.basicConfig(level=logging.INFO)
+
+
+if Config.DATABASE_URL.startswith("sqlite"):
+
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL")
+        cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.close()
+
+
+class Base(DeclarativeBase): ...
+
+
+class Video(Base):
+    __tablename__ = "videos"
+
+    MAX_NAME_LEN = 200
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    filename: Mapped[str] = mapped_column(String(MAX_NAME_LEN), nullable=False)
+    path: Mapped[str] = mapped_column(String(200), nullable=False)
+
+    status: Mapped[int] = mapped_column(Integer, default=VideoStatus.PENDING)
+
+
+class VideoMetadata(Base):
+    __tablename__ = "video_metadata"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    video_id: Mapped[int] = mapped_column(ForeignKey("videos.id"), nullable=False)
+    creation_date: Mapped[Optional[datetime]] = mapped_column(DateTime)
+
+
+def process_video(video_id, video_file_name):
+    """
+    Simulate video processing
+
+    :param video_id: Description
+    :param file_path: Description
+    """
+
+    logging.info(f"Processing video {video_id} at {video_file_name}")
+
+    job_id = run_slurm_job(
+        batch_file=Config.SLURM_BATCH_FILE,
+        args=[video_file_name],
+    )
+
+    logging.info(f"Submitted SLURM job {job_id} for video {video_file_name}")
+
+    while True:
+        jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
+        try:
+            job = jobs.pop()
+        except IndexError:
+            raise Exception(f"Error while polling jobs: job with id {job_id} is gone")
+
+        if "COMPLETED" in job.state.current or "FAILED" in job.state.current:
+            logging.info(
+                f"Job {job_id} for video {video_id} finished with state: {job.state.current}"
+            )
+            break
+
+        elif "CANCELLED" in job.state.current:
+            logging.warning(
+                f"Job {job_id} for video {video_id} was cancelled: {job.state.reason}."
+            )
+
+            raise Exception(f"Job {job_id} was cancelled: {job.state.reason}.")
+
+        elif "FAILED" in job.state.current:
+            logging.error(
+                f"Job {job_id} for video {video_id} failed: {job.state.reason}."
+            )
+
+            raise Exception(f"Job {job_id} failed: {job.state.reason}.")
+
+        time.sleep(JOB_POLL_INTERVAL_SECONDS)
+
+
+def monitoring_loop():
+    """
+    Main worker loop to monitor and process video tasks.
+    """
+
+    engine.dispose()  # Ensure new connections for this process
+
+    logging.info(f"{multiprocessing.current_process().name} started.")
+
+    """
+    TODO: check if sorting the videos by creation time actually works
+    """
+
+    while not exit_event.is_set():
+        session = SessionLocal()
+        try:
+            current_video = (
+                session.query(Video)
+                .filter(Video.status.is_(VideoStatus.PENDING))
+                .join(VideoMetadata)
+                .order_by(VideoMetadata.creation_date.desc())
+                .first()
+            )
+
+            if not current_video:
+                time.sleep(DB_POLL_INTERVAL_SECONDS)
+                continue
+
+            original_status = current_video.status
+
+            rows_affected = (
+                session.query(Video)
+                .filter(
+                    Video.id == current_video.id,
+                    Video.status == original_status,  # required to avoid race condition
+                )
+                .update({"status": VideoStatus.PROCESSING})
+            )
+
+            session.commit()
+
+            if rows_affected == 0:
+                continue  # lost race, loop again
+
+            # from here we can assume we have the lock on the task and can safely
+            # process it
+
+            try:
+                process_video(current_video.id, current_video.path)
+                current_video.status = VideoStatus.PROCESSED
+
+            except Exception as e:
+                logging.error(f"Execution error on task {current_video.id}: {e}")
+                current_video.status = VideoStatus.FAILED
+
+            session.commit()
+
+        except Exception as e:
+            logging.error(f"Worker Loop Error: {e}")
+            session.rollback()
+            time.sleep(10)
+        finally:
+            session.close()
+
+
+def signal_handler(_sig, _frame):
+    """
+    Handle shutdown signals to gracefully terminate worker processes.
+    """
+
+    logging.info("Shutdown signal received. Finishing current tasks...")
+    exit_event.set()
+
+
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+    processes = []
+    num_workers = Config.NUM_WORKERS
+
+    for i in range(num_workers):
+        p = multiprocessing.Process(target=monitoring_loop, name=f"Worker-{i}")
+        p.start()
+        processes.append(p)
+
+    for p in processes:
+        p.join()
+
+
+if __name__ == "__main__":
+    main()

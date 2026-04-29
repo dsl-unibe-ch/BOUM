@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   backend:
     build: ./backend
@@ -7,16 +5,21 @@ services:
     networks:
       - boum-network
     environment:
-      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_URL}
-      - UPLOAD_FOLDER=${VIDEO_INPUT_DIR:-/data/input}
+      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_DIR}/${DATABASE_FILE}
+      - UPLOAD_FOLDER=${VIDEO_DEST_DIR:-/data/upload}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - GPUSTACK_API_TOKEN=${GPUSTACK_API_TOKEN}
       - SPEECH_UPSTREAM_URL=${SPEECH_UPSTREAM_URL}
       - COMPLETIONS_UPSTREAM_URL=${COMPLETIONS_UPSTREAM_URL}
+      - POINTCLOUD_OUTPUT_BASE_DIR=${POINTCLOUD_OUTPUT_BASE_DEST_DIR:-/data/pointclouds}
+      - SPEECH_MODEL=${SPEECH_MODEL}
+      - COMPLETIONS_MODEL=${COMPLETIONS_MODEL}
+      - POINTCLOUD_RELATIVE_PATH=${POINTCLOUD_RELATIVE_PATH:-Reconstruction_Outputs/point_cloud_cleaned.ply}
     volumes:
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
-      - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
+      - ${VIDEO_LOCAL_DIR}:${VIDEO_DEST_DIR}:rw
+      - ${POINTCLOUD_OUTPUT_BASE_LOCAL_DIR}:${POINTCLOUD_OUTPUT_BASE_DEST_DIR}:ro
 
   video_processor:
     build: ./video_processing_worker
@@ -24,11 +27,22 @@ services:
     networks:
       - boum-network
     environment:
-      - VIDEO_INPUT_DIR=${VIDEO_INPUT_DIR:-/data/input}
-      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_URL}
+      - VIDEO_INPUT_DIR=${VIDEO_DEST_DIR:-/data/upload}
+      - DATABASE_URL=sqlite+pysqlite:///${DATABASE_DEST_DIR}/${DATABASE_FILE}
+
+      - SLURM_HOST=${SLURM_HOST}
+      - SLURM_USER=${SLURM_USER}
+      - SLURM_BATCH_FILE=${SLURM_BATCH_FILE}
+
+      - SSH_KEY_FILE=${SSH_KEY_DEST_FILE}
+      - KNOWN_HOSTS_FILE=${KNOWN_HOSTS_DEST_FILE}
+
+      - NUM_WORKERS=${NUM_VIDEO_PROCESSING_WORKERS}
     volumes:
-      - ${VIDEO_DIR_PATH}:${VIDEO_INPUT_DIR}:rw
+      - ${VIDEO_LOCAL_DIR}:${VIDEO_DEST_DIR}:ro
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
+      - ${SSH_KEY_LOCAL_FILE}:${SSH_KEY_DEST_FILE}:ro
+      - ${KNOWN_HOSTS_LOCAL_FILE}:${KNOWN_HOSTS_DEST_FILE}:ro
 
   frontend:
     build:
@@ -55,6 +69,7 @@ services:
       - boum-network
     depends_on:
       - backend
+      - frontend
 
 networks:
   boum-network:

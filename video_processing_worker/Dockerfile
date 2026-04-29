@@ -5,8 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir --user SQLAlchemy
+RUN pip install --no-cache-dir --user SQLAlchemy paramiko
 
-COPY main.py .
+COPY ./app ./app
 
-CMD ["python", "main.py"]
+CMD ["python", "-m", "app.main"]
