@@ -9,15 +9,15 @@ The application is composed of four containers, all connected via a bridge netwo
 - **backend** -- Flask REST API (Python 3.12, served by gunicorn with 4 workers). Handles authentication, experiment/video/metadata CRUD, and proxies audio to external AI services for transcription and metadata extraction.
 - **frontend** -- SvelteKit app (Node.js, built with pnpm). Provides the web UI.
 - **video_processor** -- A lightweight Python worker that polls the database for newly uploaded videos and runs them through a validation/processing pipeline (multiprocessing, 4 workers).
-- **nginx** -- Reverse proxy (nginx:alpine). Routes `/api/` to the backend and everything else to the frontend. Allows uploads up to 500 MB.
+- **caddy** -- Reverse proxy (caddy:alpine). Routes `/api/` to the backend and everything else to the frontend. Terminates TLS. Allows uploads up to 500 MB.
 
-Nginx is the only container with published ports. The backend and frontend are only reachable through it.
+Caddy is the only container with published ports (80 and 443). The backend and frontend are only reachable through it.
 
 ```
 Client
   |
   v
-nginx (:8000 -> :80)
+caddy (:80, :443)
   |
   ├── /api/*  -->  backend (:8000)
   └── /*      -->  frontend (:3000)
@@ -40,65 +40,65 @@ These are optional. The rest of the application works without them, but the audi
 
 ## Configuration
 
-Copy `env.example` to `.env` and edit it:
+Copy `.env.example` to `.env` and fill in the values:
 
 ```sh
-cp env.example .env
+cp .env.example .env
 ```
 
-The variables:
+Each variable is documented with a comment in `.env.example`.
 
-| Variable | Purpose | Default |
-|---|---|---|
-| `VIDEO_INPUT_DIR` | Path inside the containers where videos are stored | `/tmp/upload` |
-| `VIDEO_DIR_PATH` | Path on the host for video storage | `/tmp/videos` |
-| `DATABASE_LOCAL_DIR` | Path on the host for the SQLite database | `./db_data` |
-| `DATABASE_DEST_DIR` | Mount point inside the containers for the database | `/db_data` |
-| `DATABASE_DEST_URL` | Database file path inside the container | `/db_data/app.db` |
-| `JWT_SECRET_KEY` | Secret used to sign JWT tokens. Change this. | `very_secret_secret_key` |
-| `ADMIN_PASSWORD` | Password for the default `admin` user, created on first startup | `adminpass` |
-| `GPUSTACK_API_TOKEN` | Bearer token for the upstream AI service | (none) |
-| `SPEECH_UPSTREAM_URL` | URL of the speech-to-text API | (none) |
-| `COMPLETIONS_UPSTREAM_URL` | URL of the chat completions API | (none) |
+At minimum, set `JWT_SECRET_KEY` and `ADMIN_PASSWORD` before running in any non-local context.
 
-At minimum, you should change `JWT_SECRET_KEY` and `ADMIN_PASSWORD` before running in any non-local context.
+## TLS certificates
 
-## Running with Podman
+Caddy expects a certificate and key at `./certs/plant3d.ips.unibe.ch.pem` and `./certs/plant3d.ips.unibe.ch.key` (as configured in the `Caddyfile`). Create the directory and place the files there before starting:
 
-Make sure you have `podman` and `podman-compose` installed.
+```sh
+mkdir -p certs
+# copy your cert and key into certs/
+```
+
+## Running with Docker
+
+Make sure you have `docker` and `docker compose` installed.
 
 1. Create the `.env` file as described above.
 
-2. Create the host directories for data persistence:
+2. Place TLS certificates in `./certs/` as described above.
+
+3. Create the host directories for data persistence (adjust paths to match your `.env`) and ensure they are owned by UID 1000 — the `backend` and `video_processor` containers run as a non-root `app` user with UID/GID 1000:
 
 ```sh
 mkdir -p db_data
-mkdir -p /tmp/videos   # or whatever you set VIDEO_DIR_PATH to
+sudo chown -R 1000:1000 db_data "$VIDEO_LOCAL_DIR"
 ```
 
-3. Build and start all services:
+The same applies to the SSH key and `known_hosts` file used by the worker — they must be readable by UID 1000.
+
+4. Build and start all services:
 
 ```sh
-podman-compose up --build -d
+docker compose up --build -d
 ```
 
-The application will be available at `http://localhost:8000`. Log in with the username `admin` and the password you set in `ADMIN_PASSWORD`.
+The application will be available at `https://plant3d.ips.unibe.ch`. Log in with the username `admin` and the password you set in `ADMIN_PASSWORD`.
 
 To stop everything:
 
 ```sh
-podman-compose down
+docker compose down
 ```
 
 To view logs:
 
 ```sh
-podman-compose logs -f
+docker compose logs -f
 ```
 
 ## API
 
-The backend exposes a JSON REST API under `/api/`. Documentation can be found at `/api/doc`
+The backend exposes a JSON REST API under `/api/`. Documentation (Swagger UI) is available at `/api/docs/`.
 
 See `backend/README.md` for more info.
 
@@ -107,7 +107,7 @@ See `backend/README.md` for more info.
 To run just the backend services while developing the frontend locally:
 
 ```sh
-podman-compose up backend video_processor nginx -d
+docker compose up backend video_processor caddy -d
 ```
 
 Then, in the `frontend/` directory:
@@ -117,4 +117,4 @@ pnpm install
 pnpm dev
 ```
 
-The frontend dev server will need the backend accessible through nginx at `localhost:8000`.
+The frontend dev server will need the backend accessible through Caddy.
