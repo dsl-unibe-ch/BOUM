@@ -7,7 +7,7 @@ See `entry.sh`.
 
 ## API Docs
 
-Swagger UI is available at `/apidocs` when the server is running.
+Swagger UI is available at `/api/docs/` when the server is running.
 
 ## Architecture
 
