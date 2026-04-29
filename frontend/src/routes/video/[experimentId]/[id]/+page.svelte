@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { authFetch } from '$lib/auth.svelte';
 	import { PUBLIC_API_BASE_URL } from '$env/static/public';
 	import { VIDEO_STATUS_LABELS } from '$lib/constants';
@@ -13,7 +14,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let metadata = $state<VideoMetadata>(data.video?.metadata ?? emptyVideoMetadata());
+	let metadata = $derived<VideoMetadata>(data.video?.metadata ?? emptyVideoMetadata());
 	let file = $state<File | null>(null);
 	let saving = $state(false);
 	let error = $state('');
@@ -22,10 +23,34 @@
 	let transcribing = $state(false);
 	let transcribeMsg = $state('');
 	let transcription = $state('');
+	let statusRefreshInFlight = $state(false);
 
 	const isPlayable = $derived(
 		data.video != null && data.video.status >= 1 && data.video.status <= 4
 	);
+	const isProcessing = $derived(
+		data.mode === 'edit' && data.video != null && data.video.status === 1
+	);
+
+	onMount(() => {
+		const interval = setInterval(async () => {
+			if (!isProcessing || statusRefreshInFlight) return;
+
+			statusRefreshInFlight = true;
+			try {
+				await invalidateAll();
+			} catch {
+				// Ignore transient polling failures and retry on next tick.
+			} finally {
+				statusRefreshInFlight = false;
+			}
+		}, 10000);
+
+		return () => {
+			clearInterval(interval);
+		};
+	});
+
 	async function handleFileChange(e: Event) {
 		const input = e.target as HTMLInputElement;
 		file = input.files?.[0] ?? null;
