@@ -272,10 +272,14 @@
 			<p><strong>ID:</strong> {data.video.id}</p>
 		</div>
 
-		<h2 class="mb-2 h4 font-semibold">Point Cloud</h2>
-		<div class="mb-4">
-			<PointCloudViewer plyUrl={`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}/pointcloud`} />
-		</div>
+		{#if data.video.status === 2}
+			<h2 class="mb-2 h4 font-semibold">Point Cloud</h2>
+			<div class="mb-4">
+				<PointCloudViewer
+					plyUrl={`${PUBLIC_API_BASE_URL}/experiment/${data.experimentId}/videos/${data.video.id}/pointcloud`}
+				/>
+			</div>
+		{/if}
 
 		<h2 class="mb-2 h4 font-semibold">Metadata</h2>
 
