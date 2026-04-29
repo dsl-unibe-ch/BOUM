@@ -14,7 +14,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let metadata = $derived<VideoMetadata>(data.video?.metadata ?? emptyVideoMetadata());
+	// svelte-ignore state_referenced_locally
+	let metadata = $state<VideoMetadata>(data.video?.metadata ?? emptyVideoMetadata());
 	let file = $state<File | null>(null);
 	let saving = $state(false);
 	let error = $state('');
