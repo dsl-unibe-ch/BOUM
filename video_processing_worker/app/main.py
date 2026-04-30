@@ -6,8 +6,16 @@ import time
 from datetime import datetime
 from enum import IntEnum
 from os import stat
+from socket import error as SocketError
 from typing import Optional
 
+from paramiko.ssh_exception import (
+    AuthenticationException,
+    BadHostKeyException,
+    NoValidConnectionsError,
+    SSHException,
+    UnableToAuthenticate,
+)
 from sqlalchemy import DateTime, ForeignKey, Integer, String, create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
@@ -86,7 +94,22 @@ def process_video(video_id, video_file_name):
     logging.info(f"Submitted SLURM job {job_id} for video {video_file_name}")
 
     while True:
-        jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
+        try:
+            jobs = [j for j in get_slurm_jobs() if j.job_id == job_id]
+        except (
+            BadHostKeyException,
+            AuthenticationException,
+            UnableToAuthenticate,
+            SocketError,
+            NoValidConnectionsError,
+            SSHException,
+        ):
+            logging.error(
+                f"Error while polling jobs: could not connect to SLURM host {Config.SLURM_HOST}"
+            )
+            time.sleep(JOB_POLL_INTERVAL_SECONDS)
+
+            continue
         try:
             job = jobs.pop()
         except IndexError:
