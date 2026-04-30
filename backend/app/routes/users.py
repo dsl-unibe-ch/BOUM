@@ -1,13 +1,15 @@
-from flask import Blueprint, request, jsonify
+from smtplib import OLDSTYLE_AUTH
 
-from app.schemas import UserSimpleDTO
-from app.models import User
 from app.extensions import db
-from app.utils import require_admin, require_authentication, validate_body, create_jwt
+from app.models import User, UserRole
+from app.schemas import UserSimpleDTO
+from app.utils import create_jwt, require_admin, require_authentication, validate_body
+from flask import Blueprint, jsonify, request
 
-user_bp = Blueprint('user', __name__)
+user_bp = Blueprint("user", __name__)
 
-@user_bp.route('/', methods=['POST'])
+
+@user_bp.route("/", methods=["POST"])
 @require_authentication
 @require_admin
 @validate_body(UserSimpleDTO)
@@ -71,7 +73,8 @@ def add_user(_username: str, _role: int):
 
     return jsonify({"msg": "User created", "username": login_dto.username}), 201
 
-@user_bp.route('/me', methods=['GET'])
+
+@user_bp.route("/me", methods=["GET"])
 @require_authentication
 def get_my_info(user_id: int, _role: int):
     """
@@ -107,13 +110,10 @@ def get_my_info(user_id: int, _role: int):
     if user is None:
         return jsonify({"msg": "User not found"}), 404
 
-    return jsonify({
-        "id": user.id,
-        "username": user.username,
-        "role": user.role
-    }), 200
+    return jsonify({"id": user.id, "username": user.username, "role": user.role}), 200
 
-@user_bp.route('/<int:target_user_id>', methods=['GET'])
+
+@user_bp.route("/<int:target_user_id>", methods=["GET"])
 @require_authentication
 @require_admin
 def get_user_info(_user_id: int, _role: int, target_user_id: int):
@@ -160,13 +160,10 @@ def get_user_info(_user_id: int, _role: int, target_user_id: int):
     if user is None:
         return jsonify({"msg": "User not found"}), 404
 
-    return jsonify({
-        "id": user.id,
-        "username": user.username,
-        "role": user.role
-    }), 200
+    return jsonify({"id": user.id, "username": user.username, "role": user.role}), 200
 
-@user_bp.route('/', methods=['GET'])
+
+@user_bp.route("/", methods=["GET"])
 @require_authentication
 @require_admin
 def list_users(_user_id: int, _role: int):
@@ -203,12 +200,86 @@ def list_users(_user_id: int, _role: int):
     users = db.session.execute(db.select(User)).scalars().all()
 
     user_list = [
-        {
-            "id": user.id,
-            "username": user.username,
-            "role": user.role
-        }
-        for user in users
+        {"id": user.id, "username": user.username, "role": user.role} for user in users
     ]
 
     return jsonify(user_list), 200
+
+
+@user_bp.route("/<int:target_user_id>", methods=["PUT"])
+@require_authentication
+def change_password(user_id: int, role: int, target_user_id: int):
+    """
+    Change the password of a user. Admins can change any user's password, while regular users can only change their own password.
+
+    ---
+    tags:
+        - Users
+    security:
+        -  Bearer: []
+    parameters:
+        -   name: target_user_id
+            in: path
+            type: integer
+            required: true
+            description: The ID of the user whose password is to be changed
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    required:
+                        - new_password
+                        - old_password
+                    properties:
+                        new_password:
+                            type: string
+                        old_password:
+                            type: string
+    responses:
+        200:
+            description: Password updated successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            msg:
+                                type: string
+        400:
+            description: Bad request (e.g., missing fields, incorrect old password)
+        401:
+            description: Unauthorized (authentication required)
+        403:
+            description: Forbidden (regular users can only change their own password)
+        404:
+            description: User not found
+    """
+    new_password = request.get_json().get("new_password")
+    old_password = request.get_json().get("old_password")
+
+    if not new_password:
+        return jsonify({"msg": "Password is required"}), 400
+
+    if role != UserRole.ADMIN and user_id != target_user_id:
+        return jsonify({"msg": "Forbidden"}), 403
+
+    user: User | None
+    if not (
+        user := db.session.execute(
+            db.select(User).filter_by(id=target_user_id)
+        ).scalar_one_or_none()
+    ):
+        return jsonify({"msg": "User not found"}), 404
+
+    if (role == UserRole.ADMIN and user.id != user_id) or (
+        old_password and user.verify_password(old_password)
+    ):
+        user.password = new_password
+    else:
+        return jsonify({"msg": "Old password is incorrect"}), 400
+
+    db.session.commit()
+
+    return jsonify({"msg": "Password updated successfully"}), 200
