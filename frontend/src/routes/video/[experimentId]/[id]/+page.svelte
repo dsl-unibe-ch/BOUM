@@ -82,7 +82,7 @@
 			const formData = new FormData();
 			formData.append('file', transcriptionFile, transcriptionFilename);
 
-			const res = await authFetch(`${PUBLIC_API_BASE_URL}/audio/`, {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/audio/${usedVideoFallback ? 'from-video' : ''}`, {
 				method: 'POST',
 				body: formData
 			});
