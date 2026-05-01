@@ -1,10 +1,19 @@
-from flask import Blueprint, current_app, request, jsonify
-from app.utils import require_authentication
+import json
+import os
+import subprocess
+import uuid
+from io import BytesIO
+from os.path import join as join_path
+from typing import IO
 
 import requests  # type: ignore
-import json
+from app.utils import require_authentication
+from flask import Blueprint, current_app, jsonify, request
 
-audio_bp = Blueprint('audio', __name__)
+audio_bp = Blueprint("audio", __name__)
+
+CONNECT_TIMEOUT = 10
+READ_TIMEOUT = 60 * 2
 
 PROMPT = """
 System:
@@ -67,7 +76,91 @@ Rules:
 - If information is missing or uncertain, make the field null.
 """
 
-@audio_bp.route('/', methods=['POST'])
+
+def transcribe(filename: str, file: IO[bytes] | BytesIO) -> str:
+    """
+    Transcribe the given audio file using the upstream speech-to-text service.
+
+    :param file: A file-like object containing the audio data
+    :return: The transcribed text
+    :raises Exception: If the transcription fails or the response is invalid
+    """
+    headers = {"Authorization": f"Bearer {current_app.config['GPUSTACK_API_TOKEN']}"}
+
+    files = {"file": (filename, file, "application/octet-stream")}
+
+    data = {"model": current_app.config["SPEECH_MODEL"], "language": "auto"}
+
+    try:
+        response = requests.post(
+            current_app.config["SPEECH_UPSTREAM_URL"],
+            files=files,  # type: ignore
+            data=data,
+            headers=headers,
+            timeout=(CONNECT_TIMEOUT, READ_TIMEOUT),
+        )
+
+        response.raise_for_status()
+
+        return response.json()["text"]
+
+    except (KeyError, json.JSONDecodeError) as _:
+        raise Exception("Invalid response from upstream speech service")
+
+    except requests.RequestException as _:
+        raise Exception("Upstream connection failed")
+
+
+def extract_metadata(transcription: str) -> dict:
+    """
+    Extract metadata from the given transcription using the upstream completion service.
+
+    :param transcription: The transcribed text to analyze
+    :return: A dictionary containing the extracted metadata
+    :raises Exception: If the extraction fails or the response is invalid
+    """
+
+    headers = {"Authorization": f"Bearer {current_app.config['GPUSTACK_API_TOKEN']}"}
+
+    payload = {
+        "model": current_app.config["COMPLETIONS_MODEL"],
+        "temperature": 0,
+        "max_tokens": 40000,
+        "top_p": 1,
+        "frequency_penalty": 0,
+        "presence_penalty": 0,
+        "seed": None,
+        "stop": None,
+        "messages": [
+            {"role": "system", "content": PROMPT},
+            {"role": "user", "content": transcription},
+        ],
+    }
+
+    try:
+        response = requests.post(
+            current_app.config["COMPLETIONS_UPSTREAM_URL"],
+            json=payload,
+            headers=headers,
+            timeout=(10, 300),
+        )
+
+        response.raise_for_status()
+
+        # GPT-OSS doesn't reliably honor response_format={"type": "json_object"},
+        # so we rely on the system prompt's "ONLY output the json object" rule
+        # and parse the message content directly. May raise json.JSONDecodeError,
+        # which is caught below.
+        return json.loads(response.json()["choices"][0]["message"]["content"])
+
+    except (KeyError, IndexError, json.JSONDecodeError) as _:
+        raise Exception("Invalid response from upstream completion service")
+
+    except requests.RequestException as _:
+        raise Exception("Upstream completion failed")
+
+
+@audio_bp.route("/", methods=["POST"])
 @require_authentication
 def analyze_audio(_user_id, _role):
     """
@@ -132,84 +225,153 @@ def analyze_audio(_user_id, _role):
             description: Upstream service error
     """
 
-    headers = {
-        'Authorization': f"Bearer {current_app.config["GPUSTACK_API_TOKEN"]}"
-    }
-
-    if 'file' not in request.files:
+    if "file" not in request.files:
         return jsonify({"msg": "No file provided"}), 400
 
-    file_storage = request.files['file']
+    file_storage = request.files["file"]
 
-    files = {
-        'file': (
-            file_storage.filename,
-            file_storage.stream,
-            file_storage.content_type
-        )
-    }
-
-    data = {
-        'model': current_app.config["SPEECH_MODEL"],
-        'language': 'auto'
-    }
+    if not (filename := file_storage.filename):
+        return jsonify({"msg": "Invalid filename"}), 400
 
     try:
-        speech_upstream_response = requests.post(
-            current_app.config["SPEECH_UPSTREAM_URL"], 
-            files=files,  # type: ignore 
-            data=data, 
-            headers=headers
-        )
-
-        transcription = speech_upstream_response.json()["text"]
-
-    except (KeyError, json.JSONDecodeError) as _:
-        return jsonify(
-            {"msg": "Invalid response from upstream speech service"}
-        ), 502
-
-    except requests.RequestException:
-        return jsonify({"msg": f"Upstream connection failed"}), 502
-
-    payload = {
-        "model": current_app.config["COMPLETIONS_MODEL"],
-        "temperature": 0,
-        "max_tokens": 40000,
-        "top_p": 1,
-        "frequency_penalty": 0,
-        "presence_penalty": 0,
-        "seed": None,
-        "stop": None,
-        "messages": [
-            {"role": "system", "content": PROMPT},
-            {"role": "user", "content": transcription}
-        ]
-    }
+        transcription = transcribe(filename, file_storage.stream)
+    except Exception as e:
+        return jsonify({"msg": f"Transcription error: {e}"}), 502
 
     try:
-        completion_upstream_response = requests.post(
-            current_app.config["COMPLETIONS_UPSTREAM_URL"],
-            json=payload,
-            headers=headers
+        extracted_metadata = extract_metadata(transcription)
+    except Exception as e:
+        return jsonify({"msg": f"Metadata extraction error: {e}"}), 502
+
+    return jsonify(
+        {"metadata": extracted_metadata, "transcription": transcription}
+    ), 200
+
+
+@audio_bp.route("/from-video", methods=["POST"])
+@require_authentication
+def analyze_audio_from_video(_user_id, _role):
+    """
+    Upload a video file, isolate audio and extract metadata.
+    ---
+    tags:
+        - Audio
+    security:
+        - Bearer: []
+    requestBody:
+        content:
+            multipart/form-data:
+                schema:
+                    type: object
+                    properties:
+                        file:
+                            type: string
+                            format: binary
+                            description: The video file to analyze
+                    required:
+                        - file
+    responses:
+        200:
+            description: Analysis successful
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            metadata:
+                                type: object
+                                properties:
+                                    title:
+                                        type: string
+                                    species:
+                                        type: string
+                                    cultivar:
+                                        type: string
+                                    genotype:
+                                        type: string
+                                    plant_age:
+                                        type: string
+                                    plant_growth_stage:
+                                        type: string
+                                    growth_environment:
+                                        type: string
+                                    pot_volume:
+                                        type: number
+                                    substrate_type:
+                                        type: string
+                                    special_plant_treatments:
+                                        type: string
+                                    operator:
+                                        type: string
+                            transcription:
+                                type: string
+        400:
+            description: Bad request
+        401:
+            description: Unauthorized
+        502:
+            description: Upstream service error
+    """
+    if "file" not in request.files:
+        return jsonify({"msg": "No file part"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"msg": "No selected file"}), 400
+
+    ext = file.filename.split(".")[-1].lower()
+
+    if ext not in current_app.config["ALLOWED_VIDEO_EXTENSIONS"]:
+        return jsonify({"msg": "Invalid file type"}), 400
+
+    temp_file_name_base = f"tmp-{uuid.uuid4()}"
+    temp_video_filename = f"{temp_file_name_base}.{ext}"
+
+    upload_path = join_path(current_app.config["TEMP_VIDEO_DIR"], temp_video_filename)
+
+    try:
+        file.save(upload_path)
+    except Exception as _:
+        return jsonify({"msg": "Failed to save uploaded file"}), 500
+
+    audio_file_name = f"{temp_file_name_base}.mp3"
+    audio_dest_path = join_path(
+        current_app.config["AUDIO_EXTRACTION_OUTPUT_DIR"], audio_file_name
+    )
+    cmd = (
+        current_app.config["AUDIO_EXTRACTION_COMMAND_TEMPLATE"]
+        .replace("%VIDEO%", str(upload_path))
+        .replace(
+            "%AUDIO%",
+            str(audio_dest_path),
         )
+    )
 
-        completion_upstream_response.raise_for_status()
+    try:
+        try:
+            subprocess.run(cmd, shell=True, check=True)
+        except subprocess.CalledProcessError:
+            return jsonify({"msg": "Failed to extract audio from video"}), 500
 
-        metadata = json.loads(
-            completion_upstream_response
-                .json()["choices"][0]["message"]["content"]
-        )
+        with open(audio_dest_path, "rb") as audio_file:
+            audio_bytes = BytesIO(audio_file.read())
 
-        return jsonify({
-            "metadata": metadata,
-            "transcription": transcription,
-        })
+        try:
+            transcription = transcribe(audio_file_name, audio_bytes)
+        except Exception as e:
+            return jsonify({"msg": f"Transcription error: {e}"}), 502
 
-    except (KeyError, IndexError, json.JSONDecodeError):
+        try:
+            extracted_metadata = extract_metadata(transcription)
+        except Exception as e:
+            return jsonify({"msg": f"Metadata extraction error: {e}"}), 502
+
         return jsonify(
-            {"msg": "Invalid response from upstream completion service"}
-        ), 502
-
-    except requests.RequestException:
-        return jsonify({"msg": f"Upstream completion failed"}), 502
+            {"metadata": extracted_metadata, "transcription": transcription}
+        ), 200
+    finally:
+        for path in (upload_path, audio_dest_path):
+            try:
+                os.unlink(path)
+            except FileNotFoundError:
+                pass
