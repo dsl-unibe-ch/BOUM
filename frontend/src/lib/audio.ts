@@ -1,5 +1,12 @@
 const TARGET_SAMPLE_RATE = 16_000; // 16 kHz
 
+export class AudioDecodeError extends Error {
+	constructor(message = 'Failed to decode audio data from the selected video file.') {
+		super(message);
+		this.name = 'AudioDecodeError';
+	}
+}
+
 /**
  * Extract audio from a video file and return it as a WAV blob.
  * Decodes the video's audio track, downmixes to mono, resamples
@@ -10,7 +17,13 @@ export async function extractAudioFromVideo(file: File): Promise<Blob> {
 	const audioCtx = new AudioContext();
 
 	try {
-		const decoded = await audioCtx.decodeAudioData(arrayBuffer);
+		let decoded: AudioBuffer;
+		try {
+			decoded = await audioCtx.decodeAudioData(arrayBuffer);
+		} catch {
+			throw new AudioDecodeError();
+		}
+
 		const mono = downmixToMono(decoded);
 		const resampled = await resample(mono, TARGET_SAMPLE_RATE);
 		return encodeWav(resampled);

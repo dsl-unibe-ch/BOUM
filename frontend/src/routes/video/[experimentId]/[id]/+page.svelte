@@ -61,9 +61,26 @@
 		transcribeMsg = '';
 		transcription = '';
 		try {
-			const wavBlob = await extractAudioFromVideo(file);
+			let transcriptionFile: Blob | File;
+			let transcriptionFilename = 'audio.wav';
+			let usedVideoFallback = false;
+
+			try {
+				transcriptionFile = await extractAudioFromVideo(file);
+			} catch (decodeError) {
+				console.warn(
+					'Audio extraction failed, falling back to video upload for transcription.',
+					decodeError
+				);
+				usedVideoFallback = true;
+				transcriptionFile = file;
+				transcriptionFilename = file.name || 'video-upload';
+				transcribeMsg =
+					'Local audio decoding failed on this device. Uploading the full video for transcription.';
+			}
+
 			const formData = new FormData();
-			formData.append('file', wavBlob, 'audio.wav');
+			formData.append('file', transcriptionFile, transcriptionFilename);
 
 			const res = await authFetch(`${PUBLIC_API_BASE_URL}/audio/`, {
 				method: 'POST',
@@ -93,7 +110,9 @@
 					special_plant_treatments: m.special_plant_treatments ?? metadata.special_plant_treatments,
 					operator: m.operator ?? metadata.operator
 				};
-				transcribeMsg = `Metadata filled from audio transcription.`;
+				transcribeMsg = usedVideoFallback
+					? 'Metadata filled from transcription (video fallback upload).'
+					: 'Metadata filled from audio transcription.';
 				transcription = result.transcription;
 			}
 		} catch {
@@ -245,7 +264,7 @@
 				</aside>
 			{/if}
 
-			<MetadataForm bind:metadata disabled={saving && transcribing} />
+			<MetadataForm bind:metadata disabled={saving || transcribing} />
 
 			{#if error}
 				<aside class="alert preset-filled-error-500"><p>{error}</p></aside>
@@ -258,7 +277,7 @@
 					<button
 						type="submit"
 						class="btn w-full preset-filled-primary-500"
-						disabled={saving && transcribing}
+						disabled={saving || transcribing}
 					>
 						{#if saving}
 							Uploading...
