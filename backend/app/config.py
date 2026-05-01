@@ -22,6 +22,13 @@ class Config:
     UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER") or "/tmp/uploads"
     ALLOWED_VIDEO_EXTENSIONS = {"mp4", "avi", "mov", "mkv"}
 
+    # audio file extraction
+    TEMP_VIDEO_DIR = os.environ.get("TEMP_VIDEO_DEST_DIR") or "/tmp/temp_videos"
+    AUDIO_EXTRACTION_COMMAND_TEMPLATE = (
+        "ffmpeg -i %VIDEO% -vn -acodec libmp3lame -ar 44100 -ac 2 %AUDIO%"
+    )
+    AUDIO_EXTRACTION_OUTPUT_DIR = os.environ.get("AUDIO_OUTPUT_DIR") or "/tmp/audio"
+
     # pointcloud
     POINTCLOUD_BASE_DIR = (
         os.environ.get("POINTCLOUD_OUTPUT_BASE_DIR") or "/data/pointclouds"

@@ -16,10 +16,14 @@ services:
       - SPEECH_MODEL=${SPEECH_MODEL}
       - COMPLETIONS_MODEL=${COMPLETIONS_MODEL}
       - POINTCLOUD_RELATIVE_PATH=${POINTCLOUD_RELATIVE_PATH:-Reconstruction_Outputs/point_cloud_cleaned.ply}
+      - TEMP_VIDEO_DEST_DIR=${TEMP_VIDEO_DEST_DIR}
+      - AUDIO_OUTPUT_DIR=${AUDIO_OUTPUT_DIR}
     volumes:
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
       - ${VIDEO_LOCAL_DIR}:${VIDEO_DEST_DIR}:rw
       - ${POINTCLOUD_OUTPUT_BASE_LOCAL_DIR}:${POINTCLOUD_OUTPUT_BASE_DEST_DIR}:ro
+      - ${TEMP_VIDEO_LOCAL_DIR}:${TEMP_VIDEO_DEST_DIR}:rw
+      - ${AUDIO_OUTPUT_LOCAL_DIR}:${AUDIO_OUTPUT_DIR}:rw
 
   video_processor:
     build: ./video_processing_worker
@@ -71,6 +75,21 @@ services:
     depends_on:
       - backend
       - frontend
+
+  nginx:
+    image: nginx:alpine
+    container_name: boum-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - boum-network
+    depends_on:
+      - backend
+      - frontend
+    profiles:
+      - dev
 
 networks:
   boum-network:
