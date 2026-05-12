@@ -1,10 +1,11 @@
 from smtplib import OLDSTYLE_AUTH
 
+from flask import Blueprint, jsonify, request
+
 from app.extensions import db
 from app.models import User, UserRole
-from app.schemas import UserSimpleDTO
+from app.schemas import UserFullDTO, UserSimpleDTO
 from app.utils import create_jwt, require_admin, require_authentication, validate_body
-from flask import Blueprint, jsonify, request
 
 user_bp = Blueprint("user", __name__)
 
@@ -57,21 +58,33 @@ def add_user(_username: str, _role: int):
             description: Username already exists
     """
 
-    login_dto = UserSimpleDTO(**request.get_json())
+    user_dto = UserFullDTO(**request.get_json())
 
     existing_user = db.session.execute(
-        db.select(User).filter_by(username=login_dto.username)
+        db.select(User).filter_by(username=user_dto.username)
     ).scalar_one_or_none()
 
     if existing_user is not None:
         return jsonify({"msg": "Username already exists"}), 409
 
-    new_user = User(login_dto.username, login_dto.password)
+    role: None | UserRole
+    match user_dto.role:
+        case UserRole.ADMIN:
+            role = UserRole.ADMIN
+        case UserRole.USER:
+            role = UserRole.USER
+        case _:
+            role = None
+
+    if role is not None:
+        new_user = User(user_dto.username, user_dto.password, role=role)
+    else:
+        new_user = User(user_dto.username, user_dto.password)
 
     db.session.add(new_user)
     db.session.commit()
 
-    return jsonify({"msg": "User created", "username": login_dto.username}), 201
+    return jsonify({"msg": "User created", "username": user_dto.username}), 201
 
 
 @user_bp.route("/me", methods=["GET"])

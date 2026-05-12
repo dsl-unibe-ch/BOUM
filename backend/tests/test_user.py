@@ -32,6 +32,68 @@ def test_register_admin_success(client, admin_token):
     assert response.json["msg"] == "User created"
 
 
+def test_register_admin_role(client, admin_token):
+    response = client.post(
+        "/api/user/",
+        json={
+            "username": "new_admin",
+            "password": "secure_password",
+            "role": UserRole.ADMIN,
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json["msg"] == "User created"
+
+    response = client.get(
+        "/api/user/2", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["username"] == "new_admin"
+    assert response.json["role"] == UserRole.ADMIN
+
+
+def test_register_user_role(client, admin_token):
+    response = client.post(
+        "/api/user/",
+        json={
+            "username": "new_user",
+            "password": "secure_password",
+            "role": UserRole.USER,
+        },
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json["msg"] == "User created"
+
+    response = client.get(
+        "/api/user/2", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["username"] == "new_user"
+    assert response.json["role"] == UserRole.USER
+
+
+def test_register_no_role_defaults_to_non_admin(client, admin_token):
+    response = client.post(
+        "/api/user/",
+        json={"username": "new_user", "password": "secure_password"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+
+    assert response.status_code == 201
+    assert response.json["msg"] == "User created"
+
+    response = client.get(
+        "/api/user/2", headers={"Authorization": f"Bearer {admin_token}"}
+    )
+    assert response.status_code == 200
+    assert response.json["username"] == "new_user"
+    assert response.json["role"] != UserRole.ADMIN
+
+
 def test_register_existing_username(client, admin_token, app):
     client.post(
         "/api/user/",
