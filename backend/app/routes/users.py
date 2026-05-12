@@ -36,6 +36,9 @@ def add_user(_username: str, _role: int):
                             type: string
                         password:
                             type: string
+                        role:
+                            type: integer
+                            description: Optional user role (0 = admin, 1 = user). Defaults to regular user when omitted or unrecognized.
     responses:
         201:
             description: User created successfully
