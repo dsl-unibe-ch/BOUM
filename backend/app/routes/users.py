@@ -1,11 +1,9 @@
-from smtplib import OLDSTYLE_AUTH
-
 from flask import Blueprint, jsonify, request
 
 from app.extensions import db
 from app.models import User, UserRole
 from app.schemas import UserFullDTO, UserSimpleDTO
-from app.utils import create_jwt, require_admin, require_authentication, validate_body
+from app.utils import require_admin, require_authentication, validate_body
 
 user_bp = Blueprint("user", __name__)
 
@@ -222,7 +220,7 @@ def list_users(_user_id: int, _role: int):
     return jsonify(user_list), 200
 
 
-@user_bp.route("/<int:target_user_id>", methods=["PUT"])
+@user_bp.route("/<int:target_user_id>/password", methods=["PUT"])
 @require_authentication
 def change_password(user_id: int, role: int, target_user_id: int):
     """
@@ -299,3 +297,45 @@ def change_password(user_id: int, role: int, target_user_id: int):
     db.session.commit()
 
     return jsonify({"msg": "Password updated successfully"}), 200
+
+
+@user_bp.route("/<int:target_user_id>", methods=["DELETE"])
+@require_authentication
+@require_admin
+def delete_user(_user_id: int, _role: int, target_user_id: int):
+    """
+    Delete a user by ID.
+
+    ---
+    tags:
+        - Users
+    parameters:
+        - name: target_user_id
+          in: path
+          type: integer
+          required: true
+          description: ID of the user to delete
+    responses:
+        200:
+            description: User deleted successfully
+            schema:
+                type: object
+                properties:
+                    msg:
+                        type: string
+        404:
+            description: User not found
+    """
+
+    user: User | None
+    if not (
+        user := db.session.execute(
+            db.select(User).filter_by(id=target_user_id)
+        ).scalar_one_or_none()
+    ):
+        return jsonify({"msg": "User not found"}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({"msg": "User deleted successfully"}), 200
