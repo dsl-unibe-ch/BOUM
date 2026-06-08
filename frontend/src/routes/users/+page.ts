@@ -4,11 +4,17 @@ import { PUBLIC_API_BASE_URL } from '$env/static/public';
 import type { VideoDetail } from '$lib/types';
 
 export const load: PageLoad = async ({ fetch }) => {
-	const res = await authFetch(`${PUBLIC_API_BASE_URL}/user`, {}, fetch);
-	if (!res.ok) {
-		return { error: 'Failed to load users.' };
-	}
+	// const res = await authFetch(`${PUBLIC_API_BASE_URL}/user`, {}, fetch);
+	// if (!res.ok) {
+	// 	return { error: 'Failed to load users.' };
+	// }
 
-	const users = await res.json();
-	return { users };
+	// const users = await res.json();
+	// return { users };
+	return {
+		users: [
+			{ id: 1, username: 'Alice', role: 0 },
+			{ id: 2, username: 'Bob', role: 1 }
+		]
+	};
 };

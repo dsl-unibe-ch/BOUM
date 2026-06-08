@@ -1,16 +1,12 @@
 <script lang="ts">
 	import { Trash } from '@lucide/svelte';
 	import type { PageProps } from './$types';
-	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
+	import ChangePasswordPanel from '$lib/components/ChangePasswordPanel.svelte';
 
 	let { data }: PageProps = $props();
 
-	let open = $state(false);
+	let passwordPanelOpen = $state(false);
 	let selectedUserId = $state<string | null>(null);
-
-	async function resetPassword(userId: string) {
-		// Implement reset password logic here
-	}
 
 	async function deleteUser(userId: string) {
 		// Implement delete user logic here
@@ -24,11 +20,11 @@
 	<ul>
 		{#each data.users as user}
 			<li>
-				{user.name} ({user.email})
+				{user.username} ({user.role === 0 ? 'Admin' : 'User'})
 				<button
 					onclick={() => {
 						selectedUserId = user.id;
-						open = true;
+						passwordPanelOpen = true;
 					}}
 					class="btn preset-filled">reset password</button
 				>
@@ -41,17 +37,11 @@
 	<p>Loading...</p>
 {/if}
 
-<Dialog {open}>
-	<Portal>
-		<div class="dialog-content">
-			<h2>Reset Password</h2>
-			<form onsubmit={resetPassword}>
-				<label for="oldPassword">Old Password:</label>
-				<input id="oldPassword" type="password" required />
-				<label for="newPassword">New Password:</label>
-				<input id="newPassword" type="password" required />
-				<button type="submit" class="btn preset-filled">Submit</button>
-			</form>
-		</div>
-	</Portal>
-</Dialog>
+<ChangePasswordPanel
+	{selectedUserId}
+	open={passwordPanelOpen}
+	onOpenChange={(isOpen) => {
+		passwordPanelOpen = isOpen;
+		if (!isOpen) selectedUserId = null;
+	}}
+/>
