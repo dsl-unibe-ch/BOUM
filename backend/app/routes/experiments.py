@@ -17,7 +17,7 @@ from flask import Blueprint, current_app, jsonify, request, send_from_directory
 experiment_bp = Blueprint("experiment", __name__)
 
 
-@experiment_bp.route("/", methods=["POST"])
+@experiment_bp.route("", methods=["POST"])
 @require_authentication
 def create_experiment(_user_id, _role):
     """
@@ -90,7 +90,7 @@ def create_experiment(_user_id, _role):
     ), 201
 
 
-@experiment_bp.route("/", methods=["GET"])
+@experiment_bp.route("", methods=["GET"])
 @require_authentication
 @require_admin
 def list_experiments(_user_id, _role):
