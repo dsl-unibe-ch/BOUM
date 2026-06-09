@@ -11,6 +11,20 @@
 	async function deleteUser(userId: string) {
 		// Implement delete user logic here
 	}
+
+	let newUsername = $state('');
+	let creatingUser = $state(false);
+
+	async function createUser(e: SubmitEvent) {
+		e.preventDefault();
+		if (!newUsername) return;
+		creatingUser = true;
+		try {
+			// Implement create user logic here
+		} finally {
+			creatingUser = false;
+		}
+	}
 </script>
 
 {#if data.error}
@@ -19,16 +33,17 @@
 	<h1>Users</h1>
 	<ul>
 		{#each data.users as user}
-			<li>
+			<li class="flex items-center gap-4">
 				{user.username} ({user.role === 0 ? 'Admin' : 'User'})
 				<button
 					onclick={() => {
 						selectedUserId = user.id;
 						passwordPanelOpen = true;
 					}}
-					class="btn preset-filled">reset password</button
+					class="btn preset-filled-primary-500">reset password</button
 				>
-				<button onclick={() => deleteUser(user.id)} class="btn-icon preset-filled"><Trash /></button
+				<button onclick={() => deleteUser(user.id)} class="btn-icon preset-filled-primary-500"
+					><Trash /></button
 				>
 			</li>
 		{/each}
@@ -36,11 +51,29 @@
 {:else}
 	<p>Loading...</p>
 {/if}
+<form onsubmit={createUser} class="my-6 flex max-w-md gap-2">
+	<input
+		class="input flex-1"
+		type="text"
+		bind:value={newUsername}
+		placeholder="New username"
+		required
+		minlength={1}
+		maxlength={100}
+	/>
+	<button type="submit" class="btn preset-filled-primary-500" disabled={creatingUser}>
+		{#if creatingUser}
+			Creating...
+		{:else}
+			Create
+		{/if}
+	</button>
+</form>
 
 <ChangePasswordPanel
 	{selectedUserId}
 	open={passwordPanelOpen}
-	onOpenChange={(isOpen) => {
+	onOpenChange={(isOpen: boolean) => {
 		passwordPanelOpen = isOpen;
 		if (!isOpen) selectedUserId = null;
 	}}
