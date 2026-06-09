@@ -23,5 +23,7 @@
 {/if}
 
 {#key page.url.pathname}
-	{@render children()}
+	<div class="container mx-auto mt-6">
+		{@render children()}
+	</div>
 {/key}
