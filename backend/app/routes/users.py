@@ -8,7 +8,7 @@ from app.utils import require_admin, require_authentication, validate_body
 user_bp = Blueprint("user", __name__)
 
 
-@user_bp.route("/", methods=["POST"])
+@user_bp.route("", methods=["POST"])
 @require_authentication
 @require_admin
 @validate_body(UserSimpleDTO)
@@ -177,7 +177,7 @@ def get_user_info(_user_id: int, _role: int, target_user_id: int):
     return jsonify({"id": user.id, "username": user.username, "role": user.role}), 200
 
 
-@user_bp.route("/", methods=["GET"])
+@user_bp.route("", methods=["GET"])
 @require_authentication
 @require_admin
 def list_users(_user_id: int, _role: int):

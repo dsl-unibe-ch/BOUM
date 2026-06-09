@@ -7,7 +7,7 @@ from app.extensions import db
 video_bp = Blueprint('video', __name__)
 
 
-@video_bp.route('/', methods=['GET'])
+@video_bp.route('', methods=['GET'])
 @require_authentication
 @require_admin
 def list_videos(_user_id, _role):

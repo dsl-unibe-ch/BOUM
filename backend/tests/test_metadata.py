@@ -5,7 +5,7 @@ import io
 
 def test_create_experiment_without_start_date(client, admin_token):
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "No Date Experiment"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -15,7 +15,7 @@ def test_create_experiment_without_start_date(client, admin_token):
 
 def test_create_experiment_with_start_date(client, admin_token):
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "Dated Experiment", "start_date": "2026-03-18T09:00:00"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -25,7 +25,7 @@ def test_create_experiment_with_start_date(client, admin_token):
 
 def test_create_experiment_with_invalid_start_date(client, admin_token):
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "Bad Date", "start_date": "not-a-date"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )

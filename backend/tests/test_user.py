@@ -3,7 +3,7 @@ from app.constants import UserRole
 
 def test_register_unauth(client):
     response = client.post(
-        "/api/user/", json={"username": "new_user", "password": "secure_password"}
+        "/api/user", json={"username": "new_user", "password": "secure_password"}
     )
 
     assert response.status_code == 401
@@ -12,7 +12,7 @@ def test_register_unauth(client):
 
 def test_register_non_admin(client, user_token):
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "new_user", "password": "secure_password"},
         headers={"Authorization": f"Bearer {user_token}"},
     )
@@ -23,7 +23,7 @@ def test_register_non_admin(client, user_token):
 
 def test_register_admin_success(client, admin_token):
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "new_user", "password": "secure_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -34,7 +34,7 @@ def test_register_admin_success(client, admin_token):
 
 def test_register_admin_role(client, admin_token):
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={
             "username": "new_admin",
             "password": "secure_password",
@@ -56,7 +56,7 @@ def test_register_admin_role(client, admin_token):
 
 def test_register_user_role(client, admin_token):
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={
             "username": "new_user",
             "password": "secure_password",
@@ -78,7 +78,7 @@ def test_register_user_role(client, admin_token):
 
 def test_register_no_role_defaults_to_non_admin(client, admin_token):
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "new_user", "password": "secure_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -96,13 +96,13 @@ def test_register_no_role_defaults_to_non_admin(client, admin_token):
 
 def test_register_existing_username(client, admin_token, app):
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "existing_user", "password": "secure_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
 
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "existing_user", "password": "another_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -114,7 +114,7 @@ def test_register_existing_username(client, admin_token, app):
 def test_add_user_and_fetch_info(client, admin_token):
     # Register a new user
     response = client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "test_user", "password": "test_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -179,7 +179,7 @@ def test_change_password_own_missing_old_password(client, user_token):
 
 def test_change_password_other_user_forbidden(client, admin_token, user_token):
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "other_user", "password": "otherpass"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -204,7 +204,7 @@ def test_change_own_password_admin_old_password_required(client, admin_token):
 
 def test_change_password_admin_changes_other_user(client, admin_token):
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "other_user", "password": "otherpass"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -259,7 +259,7 @@ def test_delete_user_unauthenticated(client):
 def test_delete_user_non_admin(client, admin_token, user_token):
     # Admin creates a user to attempt to delete
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "victim", "password": "victimpass"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -275,7 +275,7 @@ def test_delete_user_non_admin(client, admin_token, user_token):
 def test_delete_user_admin_success(client, admin_token):
     # Create a user to delete
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "to_delete", "password": "secure_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
@@ -300,7 +300,7 @@ def test_delete_user_not_found(client, admin_token):
 def test_delete_user_actually_removes(client, admin_token):
     # Create a user
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "to_delete", "password": "secure_password"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )

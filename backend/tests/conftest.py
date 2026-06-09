@@ -56,7 +56,7 @@ def user_token(client, app):
 @pytest.fixture
 def experiment(client, admin_token):
     resp = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "Test Experiment"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -68,7 +68,7 @@ def member_user(client, admin_token, experiment, app):
     from app.models import User
     from app.utils import create_jwt
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "member", "password": "memberpass"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -88,7 +88,7 @@ def non_member_user(client, admin_token, app):
     from app.models import User
     from app.utils import create_jwt
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "nonmember", "password": "nonmemberpass"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )

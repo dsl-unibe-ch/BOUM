@@ -3,14 +3,14 @@ import io
 
 # Create experiment
 def test_create_experiment_unauthenticated(client):
-    response = client.post("/api/experiment/", json={"name": "X"})
+    response = client.post("/api/experiment", json={"name": "X"})
     assert response.status_code == 401
 
 
 def test_create_experiment_non_admin(client, non_member_user):
     _, token = non_member_user
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "X"},
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -19,7 +19,7 @@ def test_create_experiment_non_admin(client, non_member_user):
 
 def test_create_experiment_missing_name(client, admin_token):
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -28,7 +28,7 @@ def test_create_experiment_missing_name(client, admin_token):
 
 def test_create_experiment_success(client, admin_token):
     response = client.post(
-        "/api/experiment/",
+        "/api/experiment",
         json={"name": "My Experiment"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )
@@ -39,14 +39,14 @@ def test_create_experiment_success(client, admin_token):
 
 # List experiments
 def test_list_experiments_unauthenticated(client):
-    response = client.get("/api/experiment/")
+    response = client.get("/api/experiment")
     assert response.status_code == 401
 
 
 def test_list_experiments_non_admin(client, non_member_user):
     _, token = non_member_user
     response = client.get(
-        "/api/experiment/",
+        "/api/experiment",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 403
@@ -54,7 +54,7 @@ def test_list_experiments_non_admin(client, non_member_user):
 
 def test_list_experiments_admin(client, admin_token, experiment):
     response = client.get(
-        "/api/experiment/",
+        "/api/experiment",
         headers={"Authorization": f"Bearer {admin_token}"}
     )
     assert response.status_code == 200
@@ -277,7 +277,7 @@ def test_upload_video_non_member(client, experiment, non_member_user):
 def test_upload_video_any_member(client, experiment, admin_token):
     # A second member (not the original) can also upload a video
     client.post(
-        "/api/user/",
+        "/api/user",
         json={"username": "member2", "password": "pass2"},
         headers={"Authorization": f"Bearer {admin_token}"}
     )

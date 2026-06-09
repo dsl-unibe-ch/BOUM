@@ -87,7 +87,7 @@
 		creating = true;
 
 		try {
-			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment/`, {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/experiment`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ name: newName })

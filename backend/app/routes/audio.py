@@ -160,7 +160,7 @@ def extract_metadata(transcription: str) -> dict:
         raise Exception("Upstream completion failed")
 
 
-@audio_bp.route("/", methods=["POST"])
+@audio_bp.route("", methods=["POST"])
 @require_authentication
 def analyze_audio(_user_id, _role):
     """
