@@ -12,7 +12,17 @@
 	let selectedUserId = $state<string | null>(null);
 
 	async function deleteUser(userId: string) {
-		// Implement delete user logic here
+		if (!confirm('Are you sure you want to delete this user?')) return;
+		try {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/user/${userId}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok) throw new Error('Failed to delete user');
+			invalidateAll(); // Invalidate the users data to refetch the list
+		} catch (err) {
+			console.error(err);
+			alert('Error deleting user');
+		}
 	}
 
 	let newUsername = $state('');
