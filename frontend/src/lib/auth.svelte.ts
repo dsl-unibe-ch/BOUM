@@ -1,4 +1,4 @@
-import { goto } from '$app/navigation';
+import { goto, invalidateAll } from '$app/navigation';
 import { PUBLIC_API_BASE_URL } from '$env/static/public';
 
 const TOKEN_KEY = 'auth-token';
@@ -63,8 +63,9 @@ export async function loadUser(fetchFn: typeof fetch = fetch): Promise<User | nu
 	}
 }
 
-export function logout(): void {
+export async function logout(): Promise<void> {
 	clearToken();
 	user = null;
-	goto('/login');
+	await goto('/login');
+	await invalidateAll();
 }
