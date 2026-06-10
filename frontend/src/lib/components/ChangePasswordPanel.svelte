@@ -35,14 +35,34 @@
 
 	async function handleResetPassword(e: SubmitEvent) {
 		e.preventDefault();
+		if (!selectedUserId) return;
 		saving = true;
 		error = '';
 		success = '';
 
-		// TODO: Implement the actual resetPassword() function
-		// This should make an API call to update the user's password
-
-		saving = false;
+		try {
+			const res = await authFetch(`${PUBLIC_API_BASE_URL}/user/${selectedUserId}/password`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					old_password: oldPassword,
+					new_password: newPassword
+				})
+			});
+			if (!res.ok) {
+				const data = await res.json().catch(() => null);
+				throw new Error(data?.msg ?? 'Failed to update password');
+			}
+			success = 'Password updated successfully';
+			oldPassword = '';
+			newPassword = '';
+			// close the dialog after a short delay to show the success message
+			setTimeout(() => onOpenChange(false), 800);
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Error updating password';
+		} finally {
+			saving = false;
+		}
 	}
 </script>
 
