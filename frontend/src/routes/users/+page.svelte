@@ -64,61 +64,73 @@
 	}
 </script>
 
-{#if data.error}
-	<p class="error">{data.error}</p>
-{:else if data.users}
-	<h1>Users</h1>
-	<ul>
-		{#each data.users as user}
-			<li class="flex items-center gap-4">
-				{user.username} ({user.role === 0 ? 'Admin' : 'User'})
-				<button
-					onclick={() => {
-						selectedUserId = user.id;
-						passwordPanelOpen = true;
-					}}
-					class="btn preset-filled-primary-500">reset password</button
-				>
-				<button onclick={() => deleteUser(user.id)} class="btn-icon preset-filled-primary-500"
-					><Trash /></button
-				>
-			</li>
-		{/each}
-	</ul>
-{:else}
-	<p>Loading...</p>
-{/if}
-<form onsubmit={createUser} class="my-6 flex max-w-lg gap-2">
-	<input
-		class="input flex-1"
-		type="text"
-		bind:value={newUsername}
-		placeholder="username"
-		required
-		minlength={1}
-		maxlength={100}
-	/>
-	<input
-		class="input flex-1"
-		type="password"
-		bind:value={newPassword}
-		placeholder="password"
-		required
-		minlength={6}
-		maxlength={100}
-	/>
-	<label class="flex items-center space-x-2">
-		<input class="checkbox" type="checkbox" bind:checked={isAdmin} />
-		<p>admin</p>
-	</label>
-	<button type="submit" class="btn preset-filled-primary-500" disabled={creatingUser}>
-		{#if creatingUser}
-			Creating...
-		{:else}
-			Create
-		{/if}
-	</button>
-</form>
+<div class="p-4">
+	<h1 class="mb-4 h2 font-bold">Users</h1>
+	{#if data.error}
+		<p class="error">{data.error}</p>
+	{:else if data.users}
+		<ul class="mb-6 card preset-outlined-surface-200-800">
+			{#each data.users as user, index (user.id)}
+				{#if index !== 0}
+					<hr class="hr" />
+				{/if}
+				<li class="flex items-center justify-between gap-4 px-4 py-3">
+					<span class="font-medium">
+						{user.username}
+						<span class="text-sm opacity-60">({user.role === 0 ? 'Admin' : 'User'})</span>
+					</span>
+					<div class="flex shrink-0 items-center gap-2">
+						<button
+							onclick={() => {
+								selectedUserId = user.id;
+								passwordPanelOpen = true;
+							}}
+							class="btn preset-filled-primary-500">reset password</button
+						>
+						<button
+							onclick={() => deleteUser(user.id)}
+							class="btn-icon preset-filled-error-500"
+							aria-label="Delete user"><Trash size={18} /></button
+						>
+					</div>
+				</li>
+			{/each}
+		</ul>
+	{:else}
+		<p>Loading...</p>
+	{/if}
+	<form onsubmit={createUser} class="my-6 flex max-w-lg gap-2">
+		<input
+			class="input flex-1"
+			type="text"
+			bind:value={newUsername}
+			placeholder="username"
+			required
+			minlength={1}
+			maxlength={100}
+		/>
+		<input
+			class="input flex-1"
+			type="password"
+			bind:value={newPassword}
+			placeholder="password"
+			required
+			minlength={6}
+			maxlength={100}
+		/>
+		<label class="flex items-center space-x-2">
+			<input class="checkbox" type="checkbox" bind:checked={isAdmin} />
+			<p>admin</p>
+		</label>
+		<button type="submit" class="btn preset-filled-primary-500" disabled={creatingUser}>
+			{#if creatingUser}
+				Creating...
+			{:else}
+				Create
+			{/if}
+		</button>
+	</form>
+</div>
 
 <ChangePasswordPanel
 	{selectedUserId}
