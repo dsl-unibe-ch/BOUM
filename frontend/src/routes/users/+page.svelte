@@ -2,6 +2,9 @@
 	import { Trash } from '@lucide/svelte';
 	import type { PageProps } from './$types';
 	import ChangePasswordPanel from '$lib/components/ChangePasswordPanel.svelte';
+	import { authFetch } from '$lib/auth.svelte';
+	import { PUBLIC_API_BASE_URL } from '$env/static/public';
+	import { invalidateAll } from '$app/navigation';
 
 	let { data }: PageProps = $props();
 
@@ -13,14 +16,38 @@
 	}
 
 	let newUsername = $state('');
+	let newPassword = $state('');
+	let isAdmin = $state(false);
 	let creatingUser = $state(false);
 
 	async function createUser(e: SubmitEvent) {
 		e.preventDefault();
-		if (!newUsername) return;
+		if (!newUsername || !newPassword) return;
 		creatingUser = true;
 		try {
-			// Implement create user logic here
+			authFetch(`${PUBLIC_API_BASE_URL}/user`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					username: newUsername,
+					password: newPassword,
+					role: isAdmin ? 0 : 1
+				})
+			})
+				.then((res) => {
+					if (!res.ok) throw new Error('Failed to create user');
+					return res.json();
+				})
+				.then((newUser) => {
+					newUsername = '';
+					newPassword = '';
+					isAdmin = false;
+					invalidateAll(); // Invalidate the users data to refetch the list
+				})
+				.catch((err) => {
+					console.error(err);
+					alert('Error creating user');
+				});
 		} finally {
 			creatingUser = false;
 		}
@@ -51,16 +78,29 @@
 {:else}
 	<p>Loading...</p>
 {/if}
-<form onsubmit={createUser} class="my-6 flex max-w-md gap-2">
+<form onsubmit={createUser} class="my-6 flex max-w-lg gap-2">
 	<input
 		class="input flex-1"
 		type="text"
 		bind:value={newUsername}
-		placeholder="New username"
+		placeholder="username"
 		required
 		minlength={1}
 		maxlength={100}
 	/>
+	<input
+		class="input flex-1"
+		type="password"
+		bind:value={newPassword}
+		placeholder="password"
+		required
+		minlength={6}
+		maxlength={100}
+	/>
+	<label class="flex items-center space-x-2">
+		<input class="checkbox" type="checkbox" bind:checked={isAdmin} />
+		<p>admin</p>
+	</label>
 	<button type="submit" class="btn preset-filled-primary-500" disabled={creatingUser}>
 		{#if creatingUser}
 			Creating...
