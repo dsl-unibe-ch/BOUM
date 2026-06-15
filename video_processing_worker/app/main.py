@@ -115,7 +115,7 @@ def process_video(video_id, video_file_name):
         except IndexError:
             raise Exception(f"Error while polling jobs: job with id {job_id} is gone")
 
-        if "COMPLETED" in job.state.current or "FAILED" in job.state.current:
+        if "COMPLETED" in job.state.current:
             logging.info(
                 f"Job {job_id} for video {video_id} finished with state: {job.state.current}"
             )
