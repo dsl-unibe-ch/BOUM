@@ -1,6 +1,7 @@
 services:
   backend:
     build: ./backend
+    restart: always
     container_name: boum-backend
     networks:
       - boum-network
@@ -27,6 +28,7 @@ services:
 
   video_processor:
     build: ./video_processing_worker
+    restart: always
     container_name: boum-video-processor
     networks:
       - boum-network
@@ -53,6 +55,7 @@ services:
       context: ./frontend
       args:
         - PUBLIC_API_BASE_URL=${PUBLIC_API_BASE_URL:-https://plant3d.ips.unibe.ch/api}
+    restart: always
     container_name: boum-frontend
     networks:
       - boum-network
@@ -63,6 +66,7 @@ services:
 
   caddy:
     image: docker.io/caddy:alpine
+    restart: always
     container_name: boum-caddy
     ports:
       - "80:80"
@@ -78,6 +82,7 @@ services:
 
   nginx:
     image: nginx:alpine
+    restart: always
     container_name: boum-nginx
     ports:
       - "8080:80"
