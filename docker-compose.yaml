@@ -19,6 +19,7 @@ services:
       - POINTCLOUD_RELATIVE_PATH=${POINTCLOUD_RELATIVE_PATH:-Reconstruction_Outputs/point_cloud_cleaned.ply}
       - TEMP_VIDEO_DEST_DIR=${TEMP_VIDEO_DEST_DIR}
       - AUDIO_OUTPUT_DIR=${AUDIO_OUTPUT_DIR}
+      - LOG_LEVEL=${BACKEND_LOG_LEVEL:-INFO}
     volumes:
       - ${DATABASE_LOCAL_DIR}:${DATABASE_DEST_DIR}:rw
       - ${VIDEO_LOCAL_DIR}:${VIDEO_DEST_DIR}:rw

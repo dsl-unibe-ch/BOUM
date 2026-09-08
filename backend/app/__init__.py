@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask
 from flask_cors import CORS
 from sqlalchemy import event
@@ -11,6 +13,21 @@ from app.routes.experiments import experiment_bp
 from app.extensions import db
 from app.config import Config
 from app.constants import SWAGGER_CONFIG, SWAGGER_TEMPLATE
+
+def configure_logging(app: Flask):
+    """Set the app logger level and, under gunicorn, reuse its handlers.
+
+    Both entry points in entry.sh call create_app(), so this covers the
+    migration process (plain python, Flask's default handler) as well as
+    the gunicorn workers.
+    """
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+
+    if gunicorn_logger.handlers:
+        app.logger.handlers = gunicorn_logger.handlers
+
+    app.logger.setLevel(app.config["LOG_LEVEL"])
+
 
 def setup_db(app: Flask):
     from app.models import User, UserRole, Video, Experiment, VideoMetadata, ExperimentMetadataDefaults
@@ -63,6 +80,8 @@ def create_app():
     )
 
     app.config.from_object(Config)
+
+    configure_logging(app)
 
     db.init_app(app)
 

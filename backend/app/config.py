@@ -6,6 +6,9 @@ dotenv.load_dotenv()
 
 
 class Config:
+    # logging
+    LOG_LEVEL = os.environ.get("LOG_LEVEL") or "INFO"
+
     # jwt
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or "dev-key-keep-it-secret"
     JWT_ALGORITHM = "HS256"

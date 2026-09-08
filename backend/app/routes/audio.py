@@ -147,11 +147,17 @@ def extract_metadata(transcription: str) -> dict:
 
         response.raise_for_status()
 
+        message_content = response.json()["choices"][0]["message"]["content"]
+        current_app.logger.info(
+            "%s returned %s", current_app.config["COMPLETIONS_MODEL"], message_content
+        )
+
         # GPT-OSS doesn't reliably honor response_format={"type": "json_object"},
         # so we rely on the system prompt's "ONLY output the json object" rule
         # and parse the message content directly. May raise json.JSONDecodeError,
         # which is caught below.
-        return json.loads(response.json()["choices"][0]["message"]["content"])
+
+        return json.loads(message_content)
 
     except (KeyError, IndexError, json.JSONDecodeError) as _:
         raise Exception("Invalid response from upstream completion service")
