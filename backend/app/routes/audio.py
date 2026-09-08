@@ -111,6 +111,26 @@ def transcribe(filename: str, file: IO[bytes] | BytesIO) -> str:
         raise Exception("Upstream connection failed")
 
 
+def remove_think_blocks(msg: str) -> str:
+    marker_start = "<think>"
+    marker_end = "</think>"
+
+    try:
+        def _gen(msg):
+            read = [True]
+            for i in range(len(msg)):
+                if msg[i:].startswith(marker_start):
+                    read.append(False)
+                if i>=8 and msg[i-8:].startswith(marker_end):
+                    _ = read.pop()
+                if read[-1]:
+                    yield msg[i]
+
+        return "".join(_gen(msg))
+
+    except IndexError:
+        raise ValueError("Invalid think block")
+
 def extract_metadata(transcription: str) -> dict:
     """
     Extract metadata from the given transcription using the upstream completion service.
@@ -152,7 +172,9 @@ def extract_metadata(transcription: str) -> dict:
             "%s returned %s", current_app.config["COMPLETIONS_MODEL"], message_content
         )
 
-        # GPT-OSS doesn't reliably honor response_format={"type": "json_object"},
+        message_content = remove_think_blocks(message_content).strip()
+
+        # LLMs do not reliably honor response_format={"type": "json_object"},
         # so we rely on the system prompt's "ONLY output the json object" rule
         # and parse the message content directly. May raise json.JSONDecodeError,
         # which is caught below.
