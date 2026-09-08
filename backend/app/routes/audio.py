@@ -115,21 +115,17 @@ def remove_think_blocks(msg: str) -> str:
     marker_start = "<think>"
     marker_end = "</think>"
 
-    try:
-        def _gen(msg):
-            read = [True]
-            for i in range(len(msg)):
-                if msg[i:].startswith(marker_start):
-                    read.append(False)
-                if i>=8 and msg[i-8:].startswith(marker_end):
-                    _ = read.pop()
-                if read[-1]:
-                    yield msg[i]
+    def _gen(msg):
+        read = [True]
+        for (left, right) in ((msg[:i], msg[i:]) for i in range(len(msg))):
+            if right.startswith(marker_start):
+                read.append(False)
+            if left.endswith(marker_end):
+                _ = read.pop()
+            if all(read):
+                yield right[0]
 
-        return "".join(_gen(msg))
-
-    except IndexError:
-        raise ValueError("Invalid think block")
+    return "".join(_gen(msg))
 
 def extract_metadata(transcription: str) -> dict:
     """
