@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import {
 		Combobox,
 		Portal,
@@ -75,6 +75,8 @@
 	let optionsByField = $state<Partial<Record<TextFieldKey, string[]>>>({});
 	let itemsByField = $state<Partial<Record<TextFieldKey, ComboboxItem[]>>>({});
 	let openByField = $state<Partial<Record<TextFieldKey, boolean>>>({});
+	// Not reactive: raw DOM refs used only to read/restore caret position (Skeleton Combobox bug workaround).
+	const inputElsByField: Partial<Record<TextFieldKey, HTMLInputElement>> = {};
 
 	const fields = $derived(
 		mode === 'video' ? [videoOnlyFields[0], ...sharedFields, videoOnlyFields[1]] : sharedFields
@@ -193,6 +195,10 @@
 
 	function onInputValueChange(key: TextFieldKey): ComboboxRootProps['onInputValueChange'] {
 		return (event) => {
+			const inputEl = inputElsByField[key];
+			const caretStart = inputEl?.selectionStart ?? null;
+			const caretEnd = inputEl?.selectionEnd ?? null;
+
 			const inputValue = event.inputValue ?? '';
 			setTextValue(key, inputValue);
 
@@ -207,7 +213,20 @@
 				...itemsByField,
 				[key]: toComboboxItems(filtered)
 			};
+
+			if (caretStart !== null && caretEnd !== null) {
+				restoreCaretPosition(key, caretStart, caretEnd);
+			}
 		};
+	}
+
+	// Skeleton's Combobox resets the input's caret to the end whenever Combobox.Content
+	// re-renders (e.g. after filtering items). Restore the caret once the DOM settles.
+	async function restoreCaretPosition(key: TextFieldKey, start: number, end: number): Promise<void> {
+		await tick();
+		const inputEl = inputElsByField[key];
+		if (!inputEl || document.activeElement !== inputEl) return;
+		inputEl.setSelectionRange(start, end);
 	}
 
 	function onValueChange(key: TextFieldKey): ComboboxRootProps['onValueChange'] {
@@ -256,12 +275,27 @@
 					{disabled}
 				>
 					<Combobox.Control>
-						<Combobox.Input
-							class="input"
-							onkeydown={(event) => onComboboxInputKeyDown(key, event)}
-							onchange={() => persistTextValue(key, getTextValue(key))}
-							onblur={() => persistTextValue(key, getTextValue(key))}
-						/>
+						<Combobox.Input class="input">
+							{#snippet element(attrs)}
+								<input
+									{...attrs}
+									class="input"
+									bind:this={inputElsByField[key]}
+									onkeydown={(event) => {
+										attrs.onkeydown?.(event);
+										onComboboxInputKeyDown(key, event);
+									}}
+									onchange={(event) => {
+										attrs.onchange?.(event);
+										persistTextValue(key, getTextValue(key));
+									}}
+									onblur={(event) => {
+										attrs.onblur?.(event);
+										persistTextValue(key, getTextValue(key));
+									}}
+								/>
+							{/snippet}
+						</Combobox.Input>
 						<Combobox.Trigger />
 					</Combobox.Control>
 					<Portal>
